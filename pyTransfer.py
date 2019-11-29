@@ -82,6 +82,7 @@ class SerialTransfer(object):
             checksum += arr[i]
     
         checksum = ~checksum
+        checksum = checksum & 0xFF
     
         return checksum
 
@@ -90,20 +91,25 @@ class SerialTransfer(object):
         TODO
         '''
         
+        stack = []
+        
         if message_len <= MAX_PACKET_SIZE:
             self.calc_overhead(message_len);
             self.stuff_packet(message_len);
             checksum = self.find_checksum(self.txBuff, message_len);
             
-            self.connection.write(bytes([START_BYTE]))
-            self.connection.write(bytes([self.overheadByte]))
-            self.connection.write(bytes([message_len]))
+            stack.append(START_BYTE)
+            stack.append(self.overheadByte)
+            stack.append(message_len)
             
             for i in range(len(message_len)):
-                self.connection.write(bytes([self.txBuff[i]]))
+                stack.append(self.txBuff[i])
             
-            self.connection.write(bytes([checksum]))
-            self.connection.write(bytes([STOP_BYTE]))
+            stack.append(checksum)
+            stack.append(STOP_BYTE)
+            
+            stack = bytearray(stack)
+            self.connection.write(stack)
             
             return True
         return False
@@ -113,7 +119,7 @@ class SerialTransfer(object):
         TODO
         '''
 
-        testIndex = recOverheadByte
+        testIndex = self.recOverheadByte
         delta     = 0
     
         if testIndex <= MAX_PACKET_SIZE:
@@ -132,104 +138,72 @@ class SerialTransfer(object):
         if self.connection.in_waiting:
             while self.connection.in_waiting:
                 recChar = self.connection.read()
-    
-                switch (state)
-                    case find_start_byte://///////////////////////////////////////
-                    {
-                        if (recChar == START_BYTE)
-                            state = find_overhead_byte;
-                        break;
-                    }
-    
-                    case find_overhead_byte://////////////////////////////////////
-                    {
-                        recOverheadByte = recChar;
-                        state = find_payload_len;
-                        break;
-                    }
-    
-                    case find_payload_len:////////////////////////////////////////
-                    {
-                        if (recChar <= MAX_PACKET_SIZE)
-                        {
-                            bytesToRec = recChar;
-                            state = find_payload;
-                        }
-                        else
-                        {
-                            bytesRead = 0;
-                            state     = find_start_byte;
-                            status    = PAYLOAD_ERROR;
-                            return 0;
-                        }
-                        break;
-                    }
-    
-                    case find_payload:////////////////////////////////////////////
-                    {
-                        if (payIndex < bytesToRec)
-                        {
-                            rxBuff[payIndex] = recChar;
-                            payIndex++;
-    
-                            if (payIndex == bytesToRec)
-                            {
-                                payIndex = 0;
-                                state = find_checksum;
-                            }
-                        }
-                        break;
-                    }
-    
-                    case find_checksum:///////////////////////////////////////////
-                    {
-                        uint8_t calcChecksum = findChecksum(rxBuff, bytesToRec);
-    
-                        if (calcChecksum == recChar)
-                            state = find_end_byte;
-                        else
-                        {
-                            bytesRead = 0;
-                            state     = find_start_byte;
-                            status    = CHECKSUM_ERROR;
-                            return 0;
-                        }
+
+                if self.state == find_start_byte:##############################
+                    if recChar == START_BYTE:
+                        self.state = find_overhead_byte
+
+                elif self.state == find_overhead_byte:
+                    self.recOverheadByte = recChar
+                    self.state           = find_payload_len
+
+                elif self.state == find_payload_len:###########################
+                    if recChar <= MAX_PACKET_SIZE:
+                        self.bytesToRec = recChar
+                        self.state = find_payload
+                    else:
+                        self.bytesRead = 0
+                        self.state     = find_start_byte
+                        self.status    = PAYLOAD_ERROR
+                        return self.bytesRead
+
+                elif self.state == find_payload:###############################
+                    if self.payIndex < self.bytesToRec:
+                        self.rxBuff[self.payIndex] = recChar
+                        self.payIndex += 1
+
+                        if self.payIndex == self.bytesToRec:
+                            self.payIndex = 0
+                            self.state    = find_checksum
+
+                elif self.state == find_checksum:##############################
+                    calcChecksum = find_checksum(self.bytesToRec)
+
+                    if calcChecksum == recChar:
+                        self.state = find_end_byte
+                    else:
+                        self.bytesRead = 0
+                        self.state     = find_start_byte
+                        self.status    = CHECKSUM_ERROR
+                        return self.bytesRead
+                
+                elif self.state == find_end_byte:##############################
+                    self.state = find_start_byte
+
+                    if recChar == STOP_BYTE:
+                        self.unpack_packet(self.bytesToRec)
+                        self.bytesRead = self.bytesToRec
+                        self.status    = NEW_DATA
+                        return self.bytesRead
+
+                    self.bytesRead = 0
+                    self.status    = STOP_BYTE_ERROR
+                    return self.bytesRead
                     
-                        break;
-                    }
+                else:###########################################################
+                    print('ERROR: Undefined state: {}'.format(self.state))
+
+                    self.bytesRead = 0
+                    self.state     = find_start_byte
+                    return self.bytesRead
+        else:
+            self.bytesRead = 0
+            self.status    = NO_DATA;
+            return self.bytesRead
     
-                    case find_end_byte:///////////////////////////////////////////
-                    {
-                        state = find_start_byte;
-    
-                        if (recChar == STOP_BYTE)
-                        {
-                            unpackPacket(rxBuff, bytesToRec);
-                            bytesRead = bytesToRec;
-                            status    = NEW_DATA;
-                            return bytesToRec;
-                        }
-    
-                        bytesRead = 0
-                        status    = STOP_BYTE_ERROR
-                        return 0
-                        break
-                        
-                    default:
-                        Serial.print("ERROR: Undefined state: ")
-                        Serial.println(state)
-    
-                        bytesRead = 0
-                        state     = find_start_byte
-                        break
-                    
-            bytesRead = 0
-            status    = NO_DATA;
-            return 0
-    
-        bytesRead = 0
-        status    = CONTINUE
-        return 0
+        self.bytesRead = 0
+        self.status    = CONTINUE
+        return self.bytesRead
 
 
 if __name__ == '__main__':

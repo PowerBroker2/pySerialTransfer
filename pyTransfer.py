@@ -55,7 +55,7 @@ class SerialTransfer(object):
         if pay_len <= MAX_PACKET_SIZE:
             for i in range(pay_len - 1, 0, -1):
                 if self.txBuff[i] == START_BYTE:
-                    return i;
+                    return i
         return -1
     
     def stuff_packet(self, pay_len):
@@ -94,9 +94,9 @@ class SerialTransfer(object):
         stack = []
         
         if message_len <= MAX_PACKET_SIZE:
-            self.calc_overhead(message_len);
-            self.stuff_packet(message_len);
-            checksum = self.find_checksum(self.txBuff, message_len);
+            self.calc_overhead(message_len)
+            self.stuff_packet(message_len)
+            checksum = self.find_checksum(self.txBuff, message_len)
             
             stack.append(START_BYTE)
             stack.append(self.overheadByte)
@@ -198,7 +198,7 @@ class SerialTransfer(object):
                     return self.bytesRead
         else:
             self.bytesRead = 0
-            self.status    = NO_DATA;
+            self.status    = NO_DATA
             return self.bytesRead
     
         self.bytesRead = 0

@@ -22,6 +22,14 @@ find_checksum      = 4
 find_end_byte      = 5
 
 
+def constrain(val, min_, max_):
+    if val < min_:
+        return min_
+    elif val > max_:
+        return max_
+    return val
+
+
 class SerialTransfer(object):
     def __init__(self, port_num, baud=115200):
         self.txBuff = (', ' * (MAX_PACKET_SIZE - 1)).split(',')
@@ -102,8 +110,9 @@ class SerialTransfer(object):
         '''
         
         stack = []
+        message_len = constrain(message_len, 0, MAX_PACKET_SIZE)
         
-        if message_len <= MAX_PACKET_SIZE:
+        try:
             self.calc_overhead(message_len)
             self.stuff_packet(message_len)
             checksum = self.find_checksum(self.txBuff, message_len)
@@ -129,7 +138,12 @@ class SerialTransfer(object):
                 ser.write(stack)
             
             return True
-        return False
+        
+        except:
+            import traceback
+            traceback.print_exc()
+            
+            return False
 
     def unpack_packet(self, pay_len):
         '''
@@ -225,11 +239,29 @@ class SerialTransfer(object):
 
 
 if __name__ == '__main__':
-    hi = SerialTransfer(15)
-
-    hi.txBuff[0] = 'h'
-    hi.txBuff[1] = 'i'
-    hi.txBuff[2] = '\n'
+    try:
+        hi = SerialTransfer(15)
     
-    hi.send(3)
+        hi.txBuff[0] = 'h'
+        hi.txBuff[1] = 'i'
+        hi.txBuff[2] = '\n'
+        
+        hi.send(3)
+        
+        while not hi.available():
+            print('Waiting for response')
+            
+            import time
+            time.sleep(1)
+            
+        print('Response received:')
+        
+        recArray = []
+        for char in range(hi.bytesRead):
+            recArray.append(char)
+        
+        print(' '.join(recArray))
+        
+    except KeyboardInterrupt:
+        pass
     

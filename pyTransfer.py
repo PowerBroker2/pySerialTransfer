@@ -1,4 +1,5 @@
 import serial
+from platform import system
 
 
 CONTINUE        = 2
@@ -22,9 +23,9 @@ find_end_byte      = 5
 
 
 class SerialTransfer(object):
-    def __init__(self, port_name, baud=115200):
-        self.txBuff = []
-        self.rxBuff = []
+    def __init__(self, port_num, baud=115200):
+        self.txBuff = (', ' * (MAX_PACKET_SIZE - 1)).split(',')
+        self.rxBuff = (', ' * (MAX_PACKET_SIZE - 1)).split(',')
         
         self.bytesRead    = 0
         self.status       = 0
@@ -32,8 +33,14 @@ class SerialTransfer(object):
         
         self.state = find_start_byte
         
-        self.connection = serial.Serial(port_name, baudrate=baud)
-        self.connection.open()
+        if system() == 'Windows':
+            port_name = 'COM{}'.format(port_num)
+        else:
+            port_name = '/dev/ttyUSB{}'.format(port_num)
+        
+        self.connection          = serial.Serial()
+        self.connection.port     = port_name
+        self.connection.baudrate = baud
         
     def calc_overhead(self, pay_len):
         '''
@@ -42,7 +49,7 @@ class SerialTransfer(object):
         
         self.overheadByte = 0xFF
 
-        for i in range(len(pay_len)):
+        for i in range(pay_len):
             if self.txBuff[i] == START_BYTE:
                 self.overheadByte = i
                 break
@@ -78,8 +85,11 @@ class SerialTransfer(object):
         
         checksum = 0
     
-        for i in range(len(pay_len)):
-            checksum += arr[i]
+        for i in range(pay_len):
+            if type(arr[i]) == str:
+                checksum += ord(arr[i])
+            else:
+                checksum += arr[i]
     
         checksum = ~checksum
         checksum = checksum & 0xFF
@@ -102,14 +112,21 @@ class SerialTransfer(object):
             stack.append(self.overheadByte)
             stack.append(message_len)
             
-            for i in range(len(message_len)):
-                stack.append(self.txBuff[i])
+            for i in range(message_len):
+                if type(self.txBuff[i]) == str:
+                    val = ord(self.txBuff[i])
+                else:
+                    val = self.txBuff[i]
+                
+                stack.append(val)
             
             stack.append(checksum)
             stack.append(STOP_BYTE)
             
             stack = bytearray(stack)
-            self.connection.write(stack)
+            
+            with self.connection as ser:
+                ser.write(stack)
             
             return True
         return False
@@ -135,80 +152,84 @@ class SerialTransfer(object):
         TODO
         '''
         
-        if self.connection.in_waiting:
-            while self.connection.in_waiting:
-                recChar = self.connection.read()
-
-                if self.state == find_start_byte:##############################
-                    if recChar == START_BYTE:
-                        self.state = find_overhead_byte
-
-                elif self.state == find_overhead_byte:
-                    self.recOverheadByte = recChar
-                    self.state           = find_payload_len
-
-                elif self.state == find_payload_len:###########################
-                    if recChar <= MAX_PACKET_SIZE:
-                        self.bytesToRec = recChar
-                        self.state = find_payload
-                    else:
-                        self.bytesRead = 0
-                        self.state     = find_start_byte
-                        self.status    = PAYLOAD_ERROR
-                        return self.bytesRead
-
-                elif self.state == find_payload:###############################
-                    if self.payIndex < self.bytesToRec:
-                        self.rxBuff[self.payIndex] = recChar
-                        self.payIndex += 1
-
-                        if self.payIndex == self.bytesToRec:
-                            self.payIndex = 0
-                            self.state    = find_checksum
-
-                elif self.state == find_checksum:##############################
-                    calcChecksum = find_checksum(self.bytesToRec)
-
-                    if calcChecksum == recChar:
-                        self.state = find_end_byte
-                    else:
-                        self.bytesRead = 0
-                        self.state     = find_start_byte
-                        self.status    = CHECKSUM_ERROR
-                        return self.bytesRead
-                
-                elif self.state == find_end_byte:##############################
-                    self.state = find_start_byte
-
-                    if recChar == STOP_BYTE:
-                        self.unpack_packet(self.bytesToRec)
-                        self.bytesRead = self.bytesToRec
-                        self.status    = NEW_DATA
-                        return self.bytesRead
-
-                    self.bytesRead = 0
-                    self.status    = STOP_BYTE_ERROR
-                    return self.bytesRead
-                    
-                else:###########################################################
-                    print('ERROR: Undefined state: {}'.format(self.state))
-
-                    self.bytesRead = 0
-                    self.state     = find_start_byte
-                    return self.bytesRead
-        else:
-            self.bytesRead = 0
-            self.status    = NO_DATA
-            return self.bytesRead
+        with self.connection as ser:
+            if ser.in_waiting:
+                while ser.in_waiting:
+                    recChar = ser.read()
     
-        self.bytesRead = 0
-        self.status    = CONTINUE
-        return self.bytesRead
+                    if self.state == find_start_byte:##########################
+                        if recChar == START_BYTE:
+                            self.state = find_overhead_byte
+    
+                    elif self.state == find_overhead_byte:
+                        self.recOverheadByte = recChar
+                        self.state           = find_payload_len
+    
+                    elif self.state == find_payload_len:#######################
+                        if recChar <= MAX_PACKET_SIZE:
+                            self.bytesToRec = recChar
+                            self.state = find_payload
+                        else:
+                            self.bytesRead = 0
+                            self.state     = find_start_byte
+                            self.status    = PAYLOAD_ERROR
+                            return self.bytesRead
+    
+                    elif self.state == find_payload:###########################
+                        if self.payIndex < self.bytesToRec:
+                            self.rxBuff[self.payIndex] = recChar
+                            self.payIndex += 1
+    
+                            if self.payIndex == self.bytesToRec:
+                                self.payIndex = 0
+                                self.state    = find_checksum
+    
+                    elif self.state == find_checksum:##########################
+                        calcChecksum = find_checksum(self.bytesToRec)
+    
+                        if calcChecksum == recChar:
+                            self.state = find_end_byte
+                        else:
+                            self.bytesRead = 0
+                            self.state     = find_start_byte
+                            self.status    = CHECKSUM_ERROR
+                            return self.bytesRead
+                    
+                    elif self.state == find_end_byte:##########################
+                        self.state = find_start_byte
+    
+                        if recChar == STOP_BYTE:
+                            self.unpack_packet(self.bytesToRec)
+                            self.bytesRead = self.bytesToRec
+                            self.status    = NEW_DATA
+                            return self.bytesRead
+    
+                        self.bytesRead = 0
+                        self.status    = STOP_BYTE_ERROR
+                        return self.bytesRead
+                        
+                    else:######################################################
+                        print('ERROR: Undefined state: {}'.format(self.state))
+    
+                        self.bytesRead = 0
+                        self.state     = find_start_byte
+                        return self.bytesRead
+            else:
+                self.bytesRead = 0
+                self.status    = NO_DATA
+                return self.bytesRead
+        
+            self.bytesRead = 0
+            self.status    = CONTINUE
+            return self.bytesRead
 
 
 if __name__ == '__main__':
-    hi = SerialTransfer('COM4')
+    hi = SerialTransfer(15)
+
+    hi.txBuff[0] = 'h'
+    hi.txBuff[1] = 'i'
+    hi.txBuff[2] = '\n'
     
-    
-    
+    hi.send(3)
     

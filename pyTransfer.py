@@ -52,7 +52,16 @@ class SerialTransfer(object):
         
     def calc_overhead(self, pay_len):
         '''
-        TODO
+        Description:
+        ------------
+        Calculates the COBS (Consistent Overhead Stuffing) Overhead
+        byte and stores it in the class's overheadByte variable. This
+        variable holds the byte position (within the payload) of the
+        first payload byte equal to that of START_BYTE
+        
+        :param pay_len: int - number of bytes in the payload
+        
+        :return: void
         '''
         
         self.overheadByte = 0xFF
@@ -64,7 +73,15 @@ class SerialTransfer(object):
     
     def find_last(self, pay_len):
         '''
-        TODO
+        Description:
+        ------------
+        Finds last instance of the value START_BYTE within the given
+        packet array
+        
+        :param pay_len: int - number of bytes in the payload
+        
+        :return: int - location of the last instance of the value START_BYTE 
+                       within the given packet array
         '''
         
         if pay_len <= MAX_PACKET_SIZE:
@@ -75,7 +92,14 @@ class SerialTransfer(object):
     
     def stuff_packet(self, pay_len):
         '''
-        TODO
+        Description:
+        ------------
+        Enforces the COBS (Consistent Overhead Stuffing) ruleset across
+        all bytes in the packet against the value of START_BYTE
+        
+        :param pay_len: int - number of bytes in the payload
+        
+        :return: void
         '''
         
         refByte = self.find_last(pay_len)
@@ -88,7 +112,15 @@ class SerialTransfer(object):
     
     def find_checksum(self, arr, pay_len):
         '''
-        TODO
+        Description:
+        ------------
+        Determine the 8-bit checksum of a given number of elements of
+        a given array
+        
+        :param arr:     list - list to calculate the checksum over
+        :param pay_len: int  - number of bytes in the payload
+        
+        :return checksum: int - resulting checksum
         '''
         
         checksum = 0
@@ -97,7 +129,7 @@ class SerialTransfer(object):
             if type(arr[i]) == str:
                 checksum += ord(arr[i])
             else:
-                checksum += arr[i]
+                checksum += int(arr[i])
     
         checksum = ~checksum
         checksum = checksum & 0xFF
@@ -106,7 +138,14 @@ class SerialTransfer(object):
 
     def send(self, message_len):
         '''
-        TODO
+        Description:
+        ------------
+        Send a specified number of bytes in packetized form
+        
+        :param message_len: int - number of bytes from the txBuff to send as
+                                  payload in the packet
+        
+        :return: bool - whether or not the operation was successful
         '''
         
         stack = []
@@ -125,7 +164,7 @@ class SerialTransfer(object):
                 if type(self.txBuff[i]) == str:
                     val = ord(self.txBuff[i])
                 else:
-                    val = self.txBuff[i]
+                    val = int(self.txBuff[i])
                 
                 stack.append(val)
             
@@ -147,7 +186,13 @@ class SerialTransfer(object):
 
     def unpack_packet(self, pay_len):
         '''
-        TODO
+        Description:
+        ------------
+        Unpacks all COBS-stuffed bytes within the array
+        
+        :param pay_len: int - number of bytes in the payload
+        
+        :return: void
         '''
 
         testIndex = self.recOverheadByte
@@ -163,7 +208,13 @@ class SerialTransfer(object):
 
     def available(self):
         '''
-        TODO
+        Description:
+        ------------
+        Parses incoming serial data, analyzes packet contents,
+        and reports errors/successful packet reception
+        
+        :return self.bytesRead: int - number of bytes read from the received
+                                      packet
         '''
         
         with self.connection as ser:

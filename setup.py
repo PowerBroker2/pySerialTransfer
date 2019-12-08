@@ -8,7 +8,7 @@ setup(
     author       = 'Power_Broker',
     author_email = 'gitstuff2@gmail.com',
     url          = 'https://github.com/PowerBroker2/pyTransfer',
-    download_url = 'download link you saved',
+    download_url = 'https://github.com/PowerBroker2/pyTransfer/archive/1.0.0.tar.gz',
     keywords     = ['Arduino', 'serial', 'usb', 'protocol', 'communication'],
     classifiers  = [],
 )

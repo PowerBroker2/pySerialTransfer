@@ -110,7 +110,7 @@ class SerialTransfer(object):
                     self.txBuff[i] = refByte - i
                     refByte = i
     
-    def find_checksum(self, arr, pay_len):
+    def checksum(self, arr, pay_len):
         '''
         Description:
         ------------
@@ -154,7 +154,7 @@ class SerialTransfer(object):
         try:
             self.calc_overhead(message_len)
             self.stuff_packet(message_len)
-            checksum = self.find_checksum(self.txBuff, message_len)
+            found_checksum = self.checksum(self.txBuff, message_len)
             
             stack.append(START_BYTE)
             stack.append(self.overheadByte)
@@ -168,7 +168,7 @@ class SerialTransfer(object):
                 
                 stack.append(val)
             
-            stack.append(checksum)
+            stack.append(found_checksum)
             stack.append(STOP_BYTE)
             
             stack = bytearray(stack)
@@ -233,7 +233,8 @@ class SerialTransfer(object):
                     elif self.state == find_payload_len:#######################
                         if recChar <= MAX_PACKET_SIZE:
                             self.bytesToRec = recChar
-                            self.state = find_payload
+                            self.payIndex   = 0
+                            self.state      = find_payload
                         else:
                             self.bytesRead = 0
                             self.state     = find_start_byte
@@ -246,13 +247,12 @@ class SerialTransfer(object):
                             self.payIndex += 1
     
                             if self.payIndex == self.bytesToRec:
-                                self.payIndex = 0
-                                self.state    = find_checksum
+                                self.state = find_checksum
     
                     elif self.state == find_checksum:##########################
-                        calcChecksum = find_checksum(self.bytesToRec)
+                        found_checksum = self.checksum(self.bytesToRec)
     
-                        if calcChecksum == recChar:
+                        if found_checksum == ord(recChar):
                             self.state = find_end_byte
                         else:
                             self.bytesRead = 0

@@ -1,11 +1,12 @@
 import serial
 from platform import system
+from CRC import CRC
 
 
 CONTINUE        = 2
 NEW_DATA        = 1
 NO_DATA         = 0
-CHECKSUM_ERROR  = -1
+CRC_ERROR       = -1
 PAYLOAD_ERROR   = -2
 STOP_BYTE_ERROR = -3
 
@@ -18,7 +19,7 @@ find_start_byte    = 0
 find_overhead_byte = 1
 find_payload_len   = 2
 find_payload       = 3
-find_checksum      = 4
+find_crc           = 4
 find_end_byte      = 5
 
 
@@ -43,8 +44,8 @@ class SerialTransfer(object):
         :return: void
         '''
         
-        self.txBuff = (', ' * (MAX_PACKET_SIZE - 1)).split(',')
-        self.rxBuff = (', ' * (MAX_PACKET_SIZE - 1)).split(',')
+        self.txBuff = [' ' for i in (MAX_PACKET_SIZE - 1)]
+        self.rxBuff = [' ' for i in (MAX_PACKET_SIZE - 1)]
         
         self.bytesRead    = 0
         self.status       = 0
@@ -57,6 +58,7 @@ class SerialTransfer(object):
         else:
             port_name = '/dev/ttyUSB{}'.format(port_num)
         
+        self.crc                 = CRC()
         self.connection          = serial.Serial()
         self.connection.port     = port_name
         self.connection.baudrate = baud
@@ -150,32 +152,6 @@ class SerialTransfer(object):
                 if self.txBuff[i] == START_BYTE:
                     self.txBuff[i] = refByte - i
                     refByte = i
-    
-    def checksum(self, arr, pay_len):
-        '''
-        Description:
-        ------------
-        Determine the 8-bit checksum of a given number of elements of
-        a given array
-        
-        :param arr:     list - list to calculate the checksum over
-        :param pay_len: int  - number of bytes in the payload
-        
-        :return checksum: int - resulting checksum
-        '''
-        
-        checksum = 0
-    
-        for i in range(pay_len):
-            if type(arr[i]) == str:
-                checksum += ord(arr[i])
-            else:
-                checksum += int(arr[i])
-    
-        checksum = ~checksum
-        checksum = checksum & 0xFF
-    
-        return checksum
 
     def send(self, message_len):
         '''
@@ -195,7 +171,7 @@ class SerialTransfer(object):
         try:
             self.calc_overhead(message_len)
             self.stuff_packet(message_len)
-            found_checksum = self.checksum(self.txBuff, message_len)
+            found_checksum = self.crc.calculate(self.txBuff, message_len)
             
             stack.append(START_BYTE)
             stack.append(self.overheadByte)
@@ -293,17 +269,17 @@ class SerialTransfer(object):
                         self.payIndex += 1
 
                         if self.payIndex == self.bytesToRec:
-                            self.state = find_checksum
+                            self.state = find_crc
 
-                elif self.state == find_checksum:##############################
-                    found_checksum = self.checksum(self.rxBuff, self.bytesToRec)
+                elif self.state == find_crc:###################################
+                    found_checksum = self.crc.calculate(self.rxBuff, self.bytesToRec)
 
                     if found_checksum == recChar:
                         self.state = find_end_byte
                     else:
                         self.bytesRead = 0
                         self.state     = find_start_byte
-                        self.status    = CHECKSUM_ERROR
+                        self.status    = CRC_ERROR
                         return self.bytesRead
                 
                 elif self.state == find_end_byte:##############################

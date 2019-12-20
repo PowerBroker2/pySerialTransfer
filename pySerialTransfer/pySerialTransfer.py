@@ -23,6 +23,24 @@ find_crc           = 4
 find_end_byte      = 5
 
 
+def msb(val):
+    return byte_val(val, num_bytes(val) - 1)
+
+def lsb(val):
+    return byte_val(val, 0)
+
+def byte_val(val, pos):
+    return int.from_bytes(((val >> (pos * 8)) & 0xFF).to_bytes(2, 'big'), 'big')
+
+def num_bytes(val):
+    num_bits  = val.bit_length()
+    num_bytes = num_bits // 8
+    
+    if num_bits % 8:
+        num_bytes += 1
+    
+    return num_bytes
+
 def constrain(val, min_, max_):
     if val < min_:
         return min_

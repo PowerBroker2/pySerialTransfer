@@ -1,6 +1,6 @@
 import serial
 from platform import system
-from CRC import CRC
+from pySerialTransfer.CRC import CRC
 
 
 CONTINUE        = 2

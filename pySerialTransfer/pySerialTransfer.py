@@ -83,14 +83,14 @@ def open_ports():
 
 
 class SerialTransfer(object):
-    def __init__(self, port_num, baud=115200):
+    def __init__(self, port, baud=115200):
         '''
         Description:
         ------------
         Initialize transfer class and connect to the specified USB device
         
-        :param port_num: int - port number the USB device is connected to
-        :param baud:     int - baud (bits per sec) the device is configured for
+        :param port: int - port number the USB device is connected to
+        :param baud: int - baud (bits per sec) the device is configured for
         
         :return: void
         '''
@@ -105,13 +105,19 @@ class SerialTransfer(object):
         self.state = find_start_byte
         
         if system() == 'Windows':
-            port_name = 'COM{}'.format(port_num)
+            if 'COM' not in port:
+                self.port_name = 'COM{}'.format(port)
+            else:
+                self.port_name = port
         else:
-            port_name = '/dev/ttyUSB{}'.format(port_num)
+            if '/dev/tty' not in port:
+                self.port_name = '/dev/ttyUSB{}'.format(port)
+            else:
+                self.port_name = port
         
         self.crc                 = CRC()
         self.connection          = serial.Serial()
-        self.connection.port     = port_name
+        self.connection.port     = self.port_name
         self.connection.baudrate = baud
         self.open()
     

@@ -14,7 +14,7 @@ from pySerialTransfer import pySerialTransfer as txfer
 
 if __name__ == '__main__':
     try:
-        link = txfer.SerialTransfer(13)
+        link = txfer.SerialTransfer('13') #COM13
     
         link.txBuff[0] = 'h'
         link.txBuff[1] = 'i'

@@ -89,8 +89,8 @@ class SerialTransfer(object):
         ------------
         Initialize transfer class and connect to the specified USB device
         
-        :param port: int - port number the USB device is connected to
-        :param baud: int - baud (bits per sec) the device is configured for
+        :param port: int or str - port the USB device is connected to
+        :param baud: int        - baud (bits per sec) the device is configured for
         
         :return: void
         '''
@@ -103,17 +103,18 @@ class SerialTransfer(object):
         self.overheadByte = 0xFF
         
         self.state = find_start_byte
+        port_str   = str(port)
         
         if system() == 'Windows':
-            if 'COM' not in port:
-                self.port_name = 'COM{}'.format(port)
+            if 'COM' not in port_str:
+                self.port_name = 'COM{}'.format(port_str)
             else:
-                self.port_name = port
+                self.port_name = port_str
         else:
-            if '/dev/tty' not in port:
-                self.port_name = '/dev/ttyUSB{}'.format(port)
+            if '/dev/' not in port:
+                self.port_name = '/dev/{}'.format(port_str)
             else:
-                self.port_name = port
+                self.port_name = port_str
         
         self.crc                 = CRC()
         self.connection          = serial.Serial()
@@ -134,7 +135,8 @@ class SerialTransfer(object):
             try:
                 self.connection.open()
                 return True
-            except serial.SerialException:
+            except serial.SerialException as e:
+                print(e)
                 return False
         return True
     
@@ -247,10 +249,8 @@ class SerialTransfer(object):
             
             stack = bytearray(stack)
             
-            if not self.connection.is_open:
-                self.connection.open()
-            
-            self.connection.write(stack)
+            if self.open():
+                self.connection.write(stack)
             
             return True
         
@@ -293,75 +293,73 @@ class SerialTransfer(object):
                                       packet
         '''
         
-        if not self.connection.is_open:
-            self.connection.open()
-            
-        if self.connection.in_waiting:
-            while self.connection.in_waiting:
-                recChar = int.from_bytes(self.connection.read(),
-                                         byteorder='big')
-
-                if self.state == find_start_byte:##############################
-                    if recChar == START_BYTE:
-                        self.state = find_overhead_byte
-
-                elif self.state == find_overhead_byte:
-                    self.recOverheadByte = recChar
-                    self.state           = find_payload_len
-
-                elif self.state == find_payload_len:###########################
-                    if recChar <= MAX_PACKET_SIZE:
-                        self.bytesToRec = recChar
-                        self.payIndex   = 0
-                        self.state      = find_payload
-                    else:
-                        self.bytesRead = 0
-                        self.state     = find_start_byte
-                        self.status    = PAYLOAD_ERROR
-                        return self.bytesRead
-
-                elif self.state == find_payload:###############################
-                    if self.payIndex < self.bytesToRec:
-                        self.rxBuff[self.payIndex] = recChar
-                        self.payIndex += 1
-
-                        if self.payIndex == self.bytesToRec:
-                            self.state = find_crc
-
-                elif self.state == find_crc:###################################
-                    found_checksum = self.crc.calculate(self.rxBuff, self.bytesToRec)
-
-                    if found_checksum == recChar:
-                        self.state = find_end_byte
-                    else:
-                        self.bytesRead = 0
-                        self.state     = find_start_byte
-                        self.status    = CRC_ERROR
-                        return self.bytesRead
-                
-                elif self.state == find_end_byte:##############################
-                    self.state = find_start_byte
-
-                    if recChar == STOP_BYTE:
-                        self.unpack_packet(self.bytesToRec)
-                        self.bytesRead = self.bytesToRec
-                        self.status    = NEW_DATA
-                        return self.bytesRead
-
-                    self.bytesRead = 0
-                    self.status    = STOP_BYTE_ERROR
-                    return self.bytesRead
+        if self.open():
+            if self.connection.in_waiting:
+                while self.connection.in_waiting:
+                    recChar = int.from_bytes(self.connection.read(),
+                                             byteorder='big')
+    
+                    if self.state == find_start_byte:##############################
+                        if recChar == START_BYTE:
+                            self.state = find_overhead_byte
+    
+                    elif self.state == find_overhead_byte:
+                        self.recOverheadByte = recChar
+                        self.state           = find_payload_len
+    
+                    elif self.state == find_payload_len:###########################
+                        if recChar <= MAX_PACKET_SIZE:
+                            self.bytesToRec = recChar
+                            self.payIndex   = 0
+                            self.state      = find_payload
+                        else:
+                            self.bytesRead = 0
+                            self.state     = find_start_byte
+                            self.status    = PAYLOAD_ERROR
+                            return self.bytesRead
+    
+                    elif self.state == find_payload:###############################
+                        if self.payIndex < self.bytesToRec:
+                            self.rxBuff[self.payIndex] = recChar
+                            self.payIndex += 1
+    
+                            if self.payIndex == self.bytesToRec:
+                                self.state = find_crc
+    
+                    elif self.state == find_crc:###################################
+                        found_checksum = self.crc.calculate(self.rxBuff, self.bytesToRec)
+    
+                        if found_checksum == recChar:
+                            self.state = find_end_byte
+                        else:
+                            self.bytesRead = 0
+                            self.state     = find_start_byte
+                            self.status    = CRC_ERROR
+                            return self.bytesRead
                     
-                else:##########################################################
-                    print('ERROR: Undefined state: {}'.format(self.state))
-
-                    self.bytesRead = 0
-                    self.state     = find_start_byte
-                    return self.bytesRead
-        else:
-            self.bytesRead = 0
-            self.status    = NO_DATA
-            return self.bytesRead
+                    elif self.state == find_end_byte:##############################
+                        self.state = find_start_byte
+    
+                        if recChar == STOP_BYTE:
+                            self.unpack_packet(self.bytesToRec)
+                            self.bytesRead = self.bytesToRec
+                            self.status    = NEW_DATA
+                            return self.bytesRead
+    
+                        self.bytesRead = 0
+                        self.status    = STOP_BYTE_ERROR
+                        return self.bytesRead
+                        
+                    else:##########################################################
+                        print('ERROR: Undefined state: {}'.format(self.state))
+    
+                        self.bytesRead = 0
+                        self.state     = find_start_byte
+                        return self.bytesRead
+            else:
+                self.bytesRead = 0
+                self.status    = NO_DATA
+                return self.bytesRead
     
         self.bytesRead = 0
         self.status    = CONTINUE

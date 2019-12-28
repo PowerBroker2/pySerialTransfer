@@ -41,7 +41,12 @@ class CRC(object):
                 indicies = len(arr)
             
             for i in range(indicies):
-                crc = self.cs_table[crc ^ arr[i]]
+                try:
+                    nex_el = int(arr[i])
+                except ValueError:
+                    nex_el = ord(arr[i])
+                
+                crc = self.cs_table[crc ^ nex_el]
                 
         except TypeError:
             crc = self.cs_table[arr]

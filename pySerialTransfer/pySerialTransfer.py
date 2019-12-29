@@ -373,7 +373,7 @@ class SerialTransfer(object):
 
 if __name__ == '__main__':
     try:
-        link = SerialTransfer('ttyUSB0')
+        link = SerialTransfer('COM13')
 
         link.txBuff[0] = 'h'
         link.txBuff[1] = 'i'

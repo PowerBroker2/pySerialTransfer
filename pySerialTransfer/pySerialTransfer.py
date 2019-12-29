@@ -126,18 +126,17 @@ class SerialTransfer(object):
         self.connection = serial.Serial()
         self.connection.port = self.port_name
         self.connection.baudrate = baud
-        self.open()
 
     def open(self):
         '''
         Description:
         ------------
-        Open USB port and connect to device if possible
+        Open serial port and connect to device if possible
 
         :return: bool - True if successful, else False
         '''
 
-        if self.connection.closed:
+        if not self.connection.is_open():
             try:
                 self.connection.open()
                 return True
@@ -150,7 +149,7 @@ class SerialTransfer(object):
         '''
         Description:
         ------------
-        Close connection to the USB device
+        Close serial port
 
         :return: void
         '''

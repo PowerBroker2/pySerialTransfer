@@ -87,7 +87,7 @@ def serial_ports():
 
 
 class SerialTransfer(object):
-    def __init__(self, port, baud=115200):
+    def __init__(self, port, baud=115200, restrict_ports=True):
         '''
         Description:
         ------------
@@ -95,6 +95,7 @@ class SerialTransfer(object):
 
         :param port: int or str - port the USB device is connected to
         :param baud: int        - baud (bits per sec) the device is configured for
+        :param restrict_ports: boolean   - Only allow port selection from auto detected list. Default True.
 
         :return: void
         '''
@@ -107,17 +108,19 @@ class SerialTransfer(object):
         self.overheadByte = 0xFF
 
         self.state = find_start_byte
+        if restrict_ports:
+            self.port_name = None
+            for p in serial_ports():
+                if p == port or os.path.split(p)[-1] == port:
+                    self.port_name = p
+                    break
 
-        self.port_name = None
-        for p in serial_ports():
-            if p == port or os.path.split(p)[-1] == port:
-                self.port_name = p
-                break
-
-        if self.port_name is None:
-            raise InvalidSerialPort('Invalid serial port specified.\
-                Valid options are {ports},  but {port} was provided'.format(
+            if self.port_name is None:
+                raise InvalidSerialPort('Invalid serial port specified.\
+                    Valid options are {ports},  but {port} was provided'.format(
                     **{'ports': serial_ports(), 'port': port}))
+        else:
+            self.port_name = port
 
         self.crc = CRC()
         self.connection = serial.Serial()
@@ -151,7 +154,6 @@ class SerialTransfer(object):
 
         :return: void
         '''
-
         if self.connection.is_open:
             self.connection.close()
 
@@ -302,26 +304,26 @@ class SerialTransfer(object):
                     recChar = int.from_bytes(self.connection.read(),
                                              byteorder='big')
 
-                    if self.state == find_start_byte:##############################
+                    if self.state == find_start_byte:
                         if recChar == START_BYTE:
                             self.state = find_overhead_byte
 
                     elif self.state == find_overhead_byte:
                         self.recOverheadByte = recChar
-                        self.state           = find_payload_len
+                        self.state = find_payload_len
 
-                    elif self.state == find_payload_len:###########################
+                    elif self.state == find_payload_len:
                         if recChar <= MAX_PACKET_SIZE:
                             self.bytesToRec = recChar
-                            self.payIndex   = 0
-                            self.state      = find_payload
+                            self.payIndex = 0
+                            self.state = find_payload
                         else:
                             self.bytesRead = 0
-                            self.state     = find_start_byte
-                            self.status    = PAYLOAD_ERROR
+                            self.state = find_start_byte
+                            self.status = PAYLOAD_ERROR
                             return self.bytesRead
 
-                    elif self.state == find_payload:###############################
+                    elif self.state == find_payload:
                         if self.payIndex < self.bytesToRec:
                             self.rxBuff[self.payIndex] = recChar
                             self.payIndex += 1
@@ -329,39 +331,40 @@ class SerialTransfer(object):
                             if self.payIndex == self.bytesToRec:
                                 self.state = find_crc
 
-                    elif self.state == find_crc:###################################
-                        found_checksum = self.crc.calculate(self.rxBuff, self.bytesToRec)
+                    elif self.state == find_crc:
+                        found_checksum = self.crc.calculate(
+                            self.rxBuff, self.bytesToRec)
 
                         if found_checksum == recChar:
                             self.state = find_end_byte
                         else:
                             self.bytesRead = 0
-                            self.state     = find_start_byte
-                            self.status    = CRC_ERROR
+                            self.state = find_start_byte
+                            self.status = CRC_ERROR
                             return self.bytesRead
 
-                    elif self.state == find_end_byte:##############################
+                    elif self.state == find_end_byte:
                         self.state = find_start_byte
 
                         if recChar == STOP_BYTE:
                             self.unpack_packet(self.bytesToRec)
                             self.bytesRead = self.bytesToRec
-                            self.status    = NEW_DATA
+                            self.status = NEW_DATA
                             return self.bytesRead
 
                         self.bytesRead = 0
-                        self.status    = STOP_BYTE_ERROR
+                        self.status = STOP_BYTE_ERROR
                         return self.bytesRead
 
-                    else:##########################################################
+                    else:
                         print('ERROR: Undefined state: {}'.format(self.state))
 
                         self.bytesRead = 0
-                        self.state     = find_start_byte
+                        self.state = find_start_byte
                         return self.bytesRead
             else:
                 self.bytesRead = 0
-                self.status    = NO_DATA
+                self.status = NO_DATA
                 return self.bytesRead
 
         self.bytesRead = 0

@@ -133,7 +133,7 @@ class SerialTransfer(object):
         :return: bool - True if successful, else False
         '''
 
-        if not self.connection.is_open():
+        if not self.connection.is_open:
             try:
                 self.connection.open()
                 return True

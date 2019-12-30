@@ -46,6 +46,9 @@ def num_bytes(val):
 
     if num_bits % 8:
         num_bytes += 1
+    
+    if not num_bytes:
+        num_bytes = 1
 
     return num_bytes
 

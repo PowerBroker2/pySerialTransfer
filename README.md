@@ -18,7 +18,7 @@ if __name__ == '__main__':
         link = txfer.SerialTransfer('COM13')
         
         link.open()
-        sleep(2)
+        sleep(2) # allow some time for the Arduino to completely reset
     
         link.txBuff[0] = 'h'
         link.txBuff[1] = 'i'

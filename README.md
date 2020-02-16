@@ -10,11 +10,15 @@ pip install pySerialTransfer
 
 # Example Sketch
 ```python
+from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
 
 if __name__ == '__main__':
     try:
         link = txfer.SerialTransfer('COM13')
+        
+        link.open()
+        sleep(2)
     
         link.txBuff[0] = 'h'
         link.txBuff[1] = 'i'

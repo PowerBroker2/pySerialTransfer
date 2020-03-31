@@ -28,7 +28,12 @@ if __name__ == '__main__':
         
         while not link.available():
             if link.status < 0:
-                print('ERROR: {}'.format(link.status))
+                if link.status == -1:
+                    print('ERROR: CRC_ERROR')
+                elif link.status == -2:
+                    print('ERROR: PAYLOAD_ERROR')
+                elif link.status == -3:
+                    print('ERROR: STOP_BYTE_ERROR')
             
         print('Response received:')
         

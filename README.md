@@ -56,12 +56,14 @@ if __name__ == '__main__':
             ###################################################################
             while not link.available():
                 if link.status < 0:
-                    if link.status == -1:
+                    if link.status == CRC_ERROR:
                         print('ERROR: CRC_ERROR')
-                    elif link.status == -2:
+                    elif link.status == PAYLOAD_ERROR:
                         print('ERROR: PAYLOAD_ERROR')
-                    elif link.status == -3:
+                    elif link.status == STOP_BYTE_ERROR:
                         print('ERROR: STOP_BYTE_ERROR')
+                    else:
+                        print('ERROR: {}'.format(link.status))
             
             ###################################################################
             # Parse response list
@@ -127,4 +129,49 @@ void loop()
     myTransfer.sendData(myTransfer.bytesRead);
   }
 }
+```
+
+# Example Python Script with Callback Functionality
+Note that you can specify many callbacks, but only one per packet ID
+```Python
+import time
+from pySerialTransfer import pySerialTransfer as txfer
+
+
+def hi():
+    '''
+    Callback function that will automatically be called by link.tick() whenever
+    a packet with ID of 0 is successfully parsed.
+    '''
+    
+    print("hi")
+    
+'''
+list of callback functions to be called during tick. The index of the function
+reference within this list must correspond to the packet ID. For instance, if
+you want to call the function hi() when you parse a packet with an ID of 0, you
+would write the callback list with "hi" being in the 0th place of the list:
+'''
+callback_list = [ hi ]
+
+
+if __name__ == '__main__':
+    try:
+        link = txfer.SerialTransfer('COM17')
+        
+        link.set_callbacks(callback_list)
+        link.open()
+        time.sleep(2) # allow some time for the Arduino to completely reset
+        
+        while True:
+            link.tick()
+    
+    except KeyboardInterrupt:
+        link.close()
+    
+    except:
+        import traceback
+        traceback.print_exc()
+        
+        link.close()
 ```

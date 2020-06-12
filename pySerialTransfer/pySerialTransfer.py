@@ -161,7 +161,9 @@ class SerialTransfer(object):
         '''
         Description:
         ------------
-        TODO
+        Specify a list of callback functions to be automatically called by
+        self.tick() when a new packet is fully parsed. The ID of the parsed
+        packet is then used to determine which callback needs to be called.
 
         :return: void
         '''
@@ -516,7 +518,10 @@ class SerialTransfer(object):
         '''
         Description:
         ------------
-        TODO
+        Automatically parse all incoming packets, print debug statements if
+        necessary (if enabled), and call the callback function that corresponds
+        to the parsed packet's ID (if such a callback exists for that packet
+        ID)
 
         :return: void
         '''

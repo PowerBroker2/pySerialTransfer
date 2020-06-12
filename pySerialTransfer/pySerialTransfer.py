@@ -11,12 +11,16 @@ class InvalidSerialPort(Exception):
     pass
 
 
-CONTINUE        = 2
-NEW_DATA        = 1
-NO_DATA         = 0
-CRC_ERROR       = -1
-PAYLOAD_ERROR   = -2
-STOP_BYTE_ERROR = -3
+class InvalidCallbackList(Exception):
+    pass
+
+
+CONTINUE        = 3
+NEW_DATA        = 2
+NO_DATA         = 1
+CRC_ERROR       = 0
+PAYLOAD_ERROR   = -1
+STOP_BYTE_ERROR = -2
 
 START_BYTE = 0x7E
 STOP_BYTE  = 0x81
@@ -24,11 +28,12 @@ STOP_BYTE  = 0x81
 MAX_PACKET_SIZE = 0xFE
 
 find_start_byte    = 0
-find_overhead_byte = 1
-find_payload_len   = 2
-find_payload       = 3
-find_crc           = 4
-find_end_byte      = 5
+find_id_byte       = 1
+find_overhead_byte = 2
+find_payload_len   = 3
+find_payload       = 4
+find_crc           = 5
+find_end_byte      = 6
 
 
 def msb(val):
@@ -90,7 +95,7 @@ def serial_ports():
 
 
 class SerialTransfer(object):
-    def __init__(self, port, baud=115200, restrict_ports=True):
+    def __init__(self, port, baud=115200, restrict_ports=True, debug=True):
         '''
         Description:
         ------------
@@ -106,11 +111,15 @@ class SerialTransfer(object):
         self.txBuff = [' ' for i in range(MAX_PACKET_SIZE - 1)]
         self.rxBuff = [' ' for i in range(MAX_PACKET_SIZE - 1)]
 
+        self.debug = debug
+        self.idByte = 0
         self.bytesRead = 0
         self.status = 0
         self.overheadByte = 0xFF
+        self.callbacks = []
 
         self.state = find_start_byte
+        
         if restrict_ports:
             self.port_name = None
             for p in serial_ports():
@@ -147,6 +156,20 @@ class SerialTransfer(object):
                 print(e)
                 return False
         return True
+    
+    def set_callbacks(self, callbacks):
+        '''
+        Description:
+        ------------
+        TODO
+
+        :return: void
+        '''
+        
+        if type(callbacks) == list:
+            self.callbacks = callbacks
+        else:
+            raise InvalidCallbackList('Parameter "callbacks" is not of type "list"')
 
     def close(self):
         '''
@@ -420,7 +443,11 @@ class SerialTransfer(object):
 
                     if self.state == find_start_byte:
                         if recChar == START_BYTE:
-                            self.state = find_overhead_byte
+                            self.state = find_id_byte
+                    
+                    elif self.state == find_id_byte:
+                        self.idByte = recChar
+                        self.state = find_overhead_byte
 
                     elif self.state == find_overhead_byte:
                         self.recOverheadByte = recChar
@@ -484,6 +511,37 @@ class SerialTransfer(object):
         self.bytesRead = 0
         self.status = CONTINUE
         return self.bytesRead
+    
+    def tick(self):
+        '''
+        Description:
+        ------------
+        TODO
+
+        :return: void
+        '''
+        
+        if self.available():
+            if self.idByte < len(self.callbacks):
+                self.callbacks[self.idByte]()
+            elif self.debug:
+                print('ERROR: No callback available for packet ID {}'.format(self.idByte))
+            
+            return True
+        
+        elif self.debug and not self.status:
+            if self.status == CRC_ERROR:
+                err_str = 'CRC_ERROR'
+            elif self.status == PAYLOAD_ERROR:
+                err_str = 'PAYLOAD_ERROR'
+            elif self.status == STOP_BYTE_ERROR:
+                err_str = 'STOP_BYTE_ERROR'
+            else:
+                err_str = str(self.status)
+                
+            print('ERROR: {}'.format(err_str))
+        
+        return False
 
 
 if __name__ == '__main__':

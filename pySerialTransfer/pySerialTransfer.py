@@ -356,7 +356,7 @@ class SerialTransfer(object):
                     self.txBuff[i] = refByte - i
                     refByte = i
 
-    def send(self, message_len):
+    def send(self, message_len, packet_id=0):
         '''
         Description:
         ------------
@@ -377,6 +377,7 @@ class SerialTransfer(object):
             found_checksum = self.crc.calculate(self.txBuff, message_len)
 
             stack.append(START_BYTE)
+            stack.append(packet_id)
             stack.append(self.overheadByte)
             stack.append(message_len)
 

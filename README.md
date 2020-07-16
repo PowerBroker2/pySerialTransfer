@@ -130,7 +130,7 @@ void loop()
   {
     // send all received data back to Python
     for(uint16_t i=0; i < myTransfer.bytesRead; i++)
-      myTransfer.txBuff[i] = myTransfer.rxBuff[i];
+      myTransfer.packet.txBuff[i] = myTransfer.packet.rxBuff[i];
     
     myTransfer.sendData(myTransfer.bytesRead);
   }

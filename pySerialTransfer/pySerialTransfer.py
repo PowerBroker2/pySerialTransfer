@@ -331,7 +331,7 @@ class SerialTransfer(object):
         '''
 
         if pay_len <= MAX_PACKET_SIZE:
-            for i in range(pay_len - 1, 0, -1):
+            for i in range(pay_len - 1, -1, -1):
                 if self.txBuff[i] == START_BYTE:
                     return i
         return -1

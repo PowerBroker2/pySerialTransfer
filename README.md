@@ -181,3 +181,31 @@ if __name__ == '__main__':
         
         link.close()
 ```
+
+# Avoiding Polling with `select`
+When messsage processing delay is a factor, the `link.tick()` has to be polled
+continuously without any delay, as shown above.
+
+To get the same result without fully occupying a CPU,
+the [select](https://docs.python.org/3/library/select.html) module can be used
+to wait on messages. Note that this does not work on Windows.
+
+```Python
+import time
+from pySerialTransfer import pySerialTransfer as txfer
+import select
+
+def hi():
+    print("hi")
+
+if __name__ == '__main__':
+    try:
+        link = txfer.SerialTransfer('COM17')
+        link.set_callbacks([hi])
+        link.open()
+        time.sleep(2)
+
+        while True:
+            link.tick()
+            read, _, _ = select.select([link.connection], [], [], 1)
+```

@@ -184,16 +184,18 @@ class SerialTransfer(object):
         if self.connection.is_open:
             self.connection.close()
     
-    def tx_obj(self, val, start_pos=0):
+    def tx_obj(self, val, start_pos=0, byte_format=''):
         '''
         Description:
         -----------
         Insert an arbitrary variable's value into the TX buffer starting at the
         specified index
         
-        :param val:       n/a   - value to be inserted into TX buffer
-        :param start_pos: int   - index of TX buffer where the first byte
+        :param val:         n/a - value to be inserted into TX buffer
+        :param start_pos:   int - index of TX buffer where the first byte
                                   of the value is to be stored in
+        :param byte_format: str - byte order, size and alignment according to
+                                  https://docs.python.org/3/library/struct.html#struct-format-strings
     
         :return: int - index of the last byte of the value in the TX buffer + 1,
                        None if operation failed
@@ -225,14 +227,15 @@ class SerialTransfer(object):
         else:
             return None
       
-        val_bytes = struct.pack(format_str, val)
+        val_bytes = struct.pack(byte_format + format_str, val)
       
         for index in range(len(val_bytes)):
             self.txBuff[index + start_pos] = val_bytes[index]
         
         return start_pos + len(val_bytes)
 
-    def rx_obj(self, obj_type, obj_byte_size, start_pos=0, list_format=None):
+    def rx_obj(self, obj_type, obj_byte_size, start_pos=0, list_format=None,
+               byte_format=''):
         '''
         Description:
         ------------
@@ -249,6 +252,8 @@ class SerialTransfer(object):
         :param list_format:   char - array.array format char to represent the
                                      common list element type - 'c' for a char
                                      list is supported
+        :param byte_format: str    - byte order, size and alignment according to
+                                     https://docs.python.org/3/library/struct.html#struct-format-strings
     
         :return unpacked_response: obj - object extracted from the RX buffer,
                                          None if operation failed
@@ -286,7 +291,7 @@ class SerialTransfer(object):
         else:
             return None
         
-        unpacked_response = struct.unpack(format_str, buff)[0]
+        unpacked_response = struct.unpack(byte_format + format_str, buff)[0]
         
         if (obj_type == str) or (obj_type == dict):
             unpacked_response = unpacked_response.decode('utf-8')

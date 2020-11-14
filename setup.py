@@ -9,7 +9,7 @@ setup(
     version          = '2.0.5',
     description      = 'Python package used to transmit and receive low overhead byte packets - especially useful for PC<-->Arduino USB communication (compatible with https://github.com/PowerBroker2/SerialTransfer)',
     long_description = long_description,
-    long_description_content_type = "text/plain",
+    long_description_content_type = "text/markdown",
     author           = 'Power_Broker',
     author_email     = 'gitstuff2@gmail.com',
     url              = 'https://github.com/PowerBroker2/pySerialTransfer',

@@ -27,6 +27,42 @@ STOP_BYTE  = 0x81
 
 MAX_PACKET_SIZE = 0xFE
 
+BYTE_FORMATS = {'native':          '@',
+                'native_standard': '=',
+                'little-endian':   '<',
+                'big-endian':      '>',
+                'network':         '!'}
+
+STRUCT_FORMAT_LENGTHS = {'c': 1,
+                         'b': 1,
+                         'B': 1,
+                         '?': 1,
+                         'h': 2,
+                         'H': 2,
+                         'i': 4,
+                         'I': 4,
+                         'l': 4,
+                         'L': 4,
+                         'q': 8,
+                         'Q': 8,
+                         'e': 2,
+                         'f': 4,
+                         'd': 8}
+
+ARRAY_FORMAT_LENGTHS = {'b': 1,
+                        'B': 1,
+                        'u': 2,
+                        'h': 2,
+                        'H': 2,
+                        'i': 2,
+                        'I': 2,
+                        'l': 4,
+                        'q': 8,
+                        'Q': 8,
+                        'f': 4,
+                        'd': 8}
+
+
 find_start_byte    = 0
 find_id_byte       = 1
 find_overhead_byte = 2
@@ -95,7 +131,7 @@ def serial_ports():
 
 
 class SerialTransfer(object):
-    def __init__(self, port, baud=115200, restrict_ports=True, debug=True):
+    def __init__(self, port, baud=115200, restrict_ports=True, debug=True, byte_format=BYTE_FORMATS['little-endian']):
         '''
         Description:
         ------------
@@ -103,7 +139,11 @@ class SerialTransfer(object):
 
         :param port: int or str - port the USB device is connected to
         :param baud: int        - baud (bits per sec) the device is configured for
-        :param restrict_ports: boolean   - Only allow port selection from auto detected list. Default True.
+        :param restrict_ports: bool - only allow port selection from auto
+                                      detected list
+        :param byte_format:    str  - format for values packed/unpacked via the
+                                      struct package as defined by
+                                      https://docs.python.org/3/library/struct.html#struct-format-strings
 
         :return: void
         '''
@@ -111,12 +151,13 @@ class SerialTransfer(object):
         self.txBuff = [' ' for i in range(MAX_PACKET_SIZE - 1)]
         self.rxBuff = [' ' for i in range(MAX_PACKET_SIZE - 1)]
 
-        self.debug = debug
-        self.idByte = 0
-        self.bytesRead = 0
-        self.status = 0
+        self.debug        = debug
+        self.idByte       = 0
+        self.bytesRead    = 0
+        self.status       = 0
         self.overheadByte = 0xFF
-        self.callbacks = []
+        self.callbacks    = []
+        self.byte_format  = byte_format
 
         self.state = find_start_byte
         
@@ -184,7 +225,7 @@ class SerialTransfer(object):
         if self.connection.is_open:
             self.connection.close()
     
-    def tx_obj(self, val, start_pos=0, byte_format=''):
+    def tx_obj(self, val, start_pos=0, byte_format='', val_type_override=''):
         '''
         Description:
         -----------
@@ -196,46 +237,55 @@ class SerialTransfer(object):
                                   of the value is to be stored in
         :param byte_format: str - byte order, size and alignment according to
                                   https://docs.python.org/3/library/struct.html#struct-format-strings
+        :param val_type_override: str - manually specify format according to
+                                        https://docs.python.org/3/library/struct.html#format-characters
     
         :return: int - index of the last byte of the value in the TX buffer + 1,
                        None if operation failed
         '''
         
-        if type(val) == str:
-            val = val.encode()
-            format_str = '%ds' % len(val)
+        if val_type_override:
+            format_str = val_type_override
             
-        elif type(val) == dict:
-            val = json.dumps(val).encode()
-            format_str = '%ds' % len(val)
-            
-        elif type(val) == float:
-            format_str = 'f'
-            
-        elif type(val) == int:
-            format_str = 'i'
-            
-        elif type(val) == bool:
-            format_str = '?'
-            
-        elif type(val) == list:
-            for el in val:
-                start_pos = self.tx_obj(el, start_pos)
-            
-            return start_pos
-        
         else:
-            return None
+            if type(val) == str:
+                val = val.encode()
+                format_str = '%ds' % len(val)
+                
+            elif type(val) == dict:
+                val = json.dumps(val).encode()
+                format_str = '%ds' % len(val)
+                
+            elif type(val) == float:
+                format_str = 'f'
+                
+            elif type(val) == int:
+                format_str = 'i'
+                
+            elif type(val) == bool:
+                format_str = '?'
+                
+            elif type(val) == list:
+                for el in val:
+                    start_pos = self.tx_obj(el, start_pos)
+                
+                return start_pos
+            
+            else:
+                return None
       
-        val_bytes = struct.pack(byte_format + format_str, val)
+        if byte_format:
+            val_bytes = struct.pack(byte_format + format_str, val)
+            
+        else:
+            val_bytes = struct.pack(self.byte_format + format_str, val)
       
         for index in range(len(val_bytes)):
             self.txBuff[index + start_pos] = val_bytes[index]
         
         return start_pos + len(val_bytes)
 
-    def rx_obj(self, obj_type, obj_byte_size, start_pos=0, list_format=None,
-               byte_format=''):
+    def rx_obj(self, obj_type, start_pos=0, obj_byte_size=0, list_format=None, byte_format=''):
         '''
         Description:
         ------------
@@ -245,13 +295,15 @@ class SerialTransfer(object):
         element type can neither be list, dict, nor string longer than a
         single char
         
-        :param obj_type:      type - type of object to extract from the RX buffer
-        :param obj_byte_size: int  - number of bytes making up extracted object
+        :param obj_type:      type or str - type of object to extract from the
+                                            RX buffer or format string as
+                                            defined by https://docs.python.org/3/library/struct.html#format-characters
         :param start_pos:     int  - index of TX buffer where the first byte
                                      of the value is to be stored in
+        :param obj_byte_size: int  - number of bytes making up extracted object
         :param list_format:   char - array.array format char to represent the
-                                     common list element type - 'c' for a char
-                                     list is supported
+                                     common list element type as defined by
+                                     https://docs.python.org/3/library/array.html#module-array
         :param byte_format: str    - byte order, size and alignment according to
                                      https://docs.python.org/3/library/struct.html#struct-format-strings
     
@@ -259,39 +311,43 @@ class SerialTransfer(object):
                                          None if operation failed
         '''
         
-        buff = bytes(self.rxBuff[start_pos:(start_pos+obj_byte_size)])
-        
         if (obj_type == str) or (obj_type == dict):
-            format_str = '%ds' % len(buff)
+            buff = bytes(self.rxBuff[start_pos:(start_pos + obj_byte_size)])
             
         elif obj_type == float:
             format_str = 'f'
+            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == int:
             format_str = 'i'
+            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == bool:
             format_str = '?'
+            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == list:
-            if list_format == 'c':
-                arr = array('B', buff)
-                temp_list = arr.tolist()
-                
-                for index in range(len(temp_list)):
-                    temp_list[index] = chr(temp_list[index])
-                return temp_list
+            buff = bytes(self.rxBuff[start_pos:(start_pos + obj_byte_size)])
             
-            elif list_format:
+            if list_format:
                 arr = array(list_format, buff)
                 return arr.tolist()
             
             else:
                 return None
+        
+        elif type(obj_type) == str:
+            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[obj_type])])
+            format_str = obj_type
+        
         else:
             return None
         
-        unpacked_response = struct.unpack(byte_format + format_str, buff)[0]
+        if byte_format:
+            unpacked_response = struct.unpack(byte_format + format_str, buff)[0]
+            
+        else:
+            unpacked_response = struct.unpack(self.byte_format + format_str, buff)[0]
         
         if (obj_type == str) or (obj_type == dict):
             unpacked_response = unpacked_response.decode('utf-8')
@@ -553,30 +609,3 @@ class SerialTransfer(object):
             print('ERROR: {}'.format(err_str))
         
         return False
-
-
-if __name__ == '__main__':
-    try:
-        link = SerialTransfer('COM13')
-
-        link.txBuff[0] = 'h'
-        link.txBuff[1] = 'i'
-        link.txBuff[2] = '\n'
-
-        link.send(3)
-
-        while not link.available():
-            if link.status < 0:
-                print('ERROR: {}'.format(link.status))
-
-        print('Response received:')
-
-        response = ''
-        for index in range(link.bytesRead):
-            response += chr(link.rxBuff[index])
-
-        print(response)
-        link.close()
-
-    except KeyboardInterrupt:
-        link.close()

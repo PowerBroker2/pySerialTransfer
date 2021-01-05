@@ -313,6 +313,7 @@ class SerialTransfer(object):
         
         if (obj_type == str) or (obj_type == dict):
             buff = bytes(self.rxBuff[start_pos:(start_pos + obj_byte_size)])
+            format_str = '%ds' % len(buff)
             
         elif obj_type == float:
             format_str = 'f'

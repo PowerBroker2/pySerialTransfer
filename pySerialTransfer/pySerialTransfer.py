@@ -278,7 +278,10 @@ class SerialTransfer(object):
             val_bytes = struct.pack(byte_format + format_str, val)
             
         else:
-            val_bytes = struct.pack(self.byte_format + format_str, val)
+            if format_str == 'c':
+                val_bytes = struct.pack(self.byte_format + format_str, bytes(str(val), "utf-8"))
+            else:
+                val_bytes = struct.pack(self.byte_format + format_str, val)
       
         for index in range(len(val_bytes)):
             self.txBuff[index + start_pos] = val_bytes[index]
@@ -455,7 +458,7 @@ class SerialTransfer(object):
             stack.append(STOP_BYTE)
 
             stack = bytearray(stack)
-
+            
             if self.open():
                 self.connection.write(stack)
 

@@ -504,9 +504,11 @@ class SerialTransfer(object):
         '''
 
         if self.open():
-            if self.connection.in_waiting:
-                while self.connection.in_waiting:
-                    recChar = int.from_bytes(self.connection.read(),
+            bytes = self.connection.read(self.connection.in_waiting)
+            
+            if bytes:
+                for byte in bytes:
+                    recChar = int.from_bytes(byte,
                                              byteorder='big')
 
                     if self.state == find_start_byte:
@@ -600,7 +602,7 @@ class SerialTransfer(object):
             
             return True
         
-        elif self.debug and not self.status:
+        elif self.debug and self.status <=0:
             if self.status == CRC_ERROR:
                 err_str = 'CRC_ERROR'
             elif self.status == PAYLOAD_ERROR:

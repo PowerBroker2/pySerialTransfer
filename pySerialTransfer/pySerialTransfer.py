@@ -533,12 +533,8 @@ class SerialTransfer(object):
                             return self.bytesRead
 
                     elif self.state == find_payload:
-                        if self.payIndex < self.bytesToRec:
-                            self.rxBuff[self.payIndex] = recChar
-                            self.payIndex += 1
-
-                            if self.payIndex == self.bytesToRec:
-                                self.state = find_crc
+                        self.rxBuff[0:self.bytesToRec] = [recChar] + list(self.connection.read(self.bytesToRec - 1))
+                        self.state = find_crc
 
                     elif self.state == find_crc:
                         found_checksum = self.crc.calculate(

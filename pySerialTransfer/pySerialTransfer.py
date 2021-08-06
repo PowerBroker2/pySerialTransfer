@@ -131,7 +131,7 @@ def serial_ports():
 
 
 class SerialTransfer(object):
-    def __init__(self, port, baud=115200, restrict_ports=True, debug=True, byte_format=BYTE_FORMATS['little-endian']):
+    def __init__(self, port, baud=115200, restrict_ports=True, debug=True, byte_format=BYTE_FORMATS['little-endian'], timeout=0.05):
         '''
         Description:
         ------------
@@ -144,7 +144,8 @@ class SerialTransfer(object):
         :param byte_format:    str  - format for values packed/unpacked via the
                                       struct package as defined by
                                       https://docs.python.org/3/library/struct.html#struct-format-strings
-
+        :param timeout:       float - timeout (in s) to set on pySerial for maximum wait for a read from the OS
+                                      default 50ms marries up with DEFAULT_TIMEOUT in SerialTransfer
         :return: void
         '''
 
@@ -179,6 +180,7 @@ class SerialTransfer(object):
         self.connection = serial.Serial()
         self.connection.port = self.port_name
         self.connection.baudrate = baud
+        self.connection.timeout = timeout
 
     def open(self):
         '''
@@ -533,8 +535,21 @@ class SerialTransfer(object):
                             return self.bytesRead
 
                     elif self.state == find_payload:
-                        self.rxBuff[0:self.bytesToRec] = [recChar] + list(self.connection.read(self.bytesToRec - 1))
-                        self.state = find_crc
+                        if self.payIndex < self.bytesToRec:
+                            self.rxBuff[self.payIndex] = recChar
+                            self.payIndex += 1
+
+                            # Try to receive as many more bytes as we can, but we might not get all of them
+                            # if there is a timeout from the OS
+                            if self.payIndex != self.bytesToRec:
+                                moreBytes = list(self.connection.read(self.bytesToRec - self.payIndex))
+                                nextIndex = self.payIndex + len(moreBytes)
+
+                                self.rxBuff[self.payIndex:nextIndex] = moreBytes
+                                self.payIndex = nextIndex
+
+                            if self.payIndex == self.bytesToRec:
+                                self.state = find_crc
 
                     elif self.state == find_crc:
                         found_checksum = self.crc.calculate(

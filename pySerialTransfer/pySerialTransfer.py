@@ -149,8 +149,8 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        self.txBuff = [' ' for i in range(MAX_PACKET_SIZE - 1)]
-        self.rxBuff = [' ' for i in range(MAX_PACKET_SIZE - 1)]
+        self.txBuff = [' ' for i in range(MAX_PACKET_SIZE)]
+        self.rxBuff = [' ' for i in range(MAX_PACKET_SIZE)]
 
         self.debug        = debug
         self.idByte       = 0

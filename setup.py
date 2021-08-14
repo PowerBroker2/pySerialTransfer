@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setup(
     name             = 'pySerialTransfer',
     packages         = ['pySerialTransfer'],
-    version          = '2.1.4',
+    version          = '2.1.5',
     description      = 'Python package used to transmit and receive low overhead byte packets - especially useful for PC<-->Arduino USB communication (compatible with https://github.com/PowerBroker2/SerialTransfer)',
     long_description = long_description,
     long_description_content_type = "text/markdown",

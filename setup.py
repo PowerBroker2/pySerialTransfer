@@ -13,7 +13,7 @@ setup(
     author           = 'Power_Broker',
     author_email     = 'gitstuff2@gmail.com',
     url              = 'https://github.com/PowerBroker2/pySerialTransfer',
-    download_url     = 'https://github.com/PowerBroker2/pySerialTransfer/archive/2.1.4.tar.gz',
+    download_url     = 'https://github.com/PowerBroker2/pySerialTransfer/archive/2.1.5.tar.gz',
     keywords         = ['Arduino', 'serial', 'usb', 'protocol', 'communication'],
     classifiers      = [],
     install_requires = ['pyserial']

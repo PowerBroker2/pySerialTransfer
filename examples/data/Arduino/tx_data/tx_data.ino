@@ -5,7 +5,7 @@ SerialTransfer myTransfer;
 
 struct STRUCT {
   char z;
-  float y;
+  double y;
 } testStruct;
 
 char arr[] = "hello";

@@ -31,7 +31,7 @@ void loop()
       
       for(uint8_t i=sizeof(fileIndex); i<myTransfer.bytesRead; i++)
       {
-        file[fileIndex] = (char)myTransfer.packet.rxBuff[i]);
+        file[fileIndex] = (char)myTransfer.packet.rxBuff[i];
         fileIndex++;
       }      
     }

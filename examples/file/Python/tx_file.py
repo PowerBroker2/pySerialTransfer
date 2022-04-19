@@ -31,7 +31,7 @@ if __name__ == '__main__':
                 if (fileIndex + (txfer.MAX_PACKET_SIZE - 2)) > fileSize:
                     dataLen = fileSize - fileIndex
                 
-                dataStr = file[fileIndex:dataLen]
+                dataStr = file[fileIndex:fileIndex+dataLen]
                 
                 sendSize = link.tx_obj(fileIndex, val_type_override='h')
                 sendSize = link.tx_obj(dataStr, start_pos=sendSize)

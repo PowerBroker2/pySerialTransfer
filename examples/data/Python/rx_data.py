@@ -30,7 +30,7 @@ if __name__ == '__main__':
                 
                 arr = link.rx_obj(obj_type=str,
                                   start_pos=recSize,
-                                  obj_byte_size=6)
+                                  obj_byte_size=5)
                 recSize += len(arr)
                 
                 print('{}{} | {}'.format(testStruct.z, testStruct.y, arr))

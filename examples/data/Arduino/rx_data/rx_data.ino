@@ -3,7 +3,7 @@
 
 SerialTransfer myTransfer;
 
-struct STRUCT {
+struct __attribute__((packed)) STRUCT {
   char z;
   double y;
 } testStruct;

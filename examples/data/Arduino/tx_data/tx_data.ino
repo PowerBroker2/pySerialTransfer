@@ -3,7 +3,7 @@
 
 SerialTransfer myTransfer;
 
-struct STRUCT {
+struct __attribute__((packed)) STRUCT {
   char z;
   double y;
 } testStruct;
@@ -31,7 +31,7 @@ void loop()
   sendSize = myTransfer.txObj(testStruct, sendSize);
 
   ///////////////////////////////////////// Stuff buffer with array
-  sendSize = myTransfer.txObj(arr, sendSize);
+  sendSize = myTransfer.txObj(arr, sendSize, strlen(arr));
 
   ///////////////////////////////////////// Send buffer
   myTransfer.sendData(sendSize);

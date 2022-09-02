@@ -284,6 +284,22 @@ class SerialTransfer(object):
                 val_bytes = struct.pack(self.byte_format + format_str, bytes(str(val), "utf-8"))
             else:
                 val_bytes = struct.pack(self.byte_format + format_str, val)
+
+        return self.tx_struct_obj(val_bytes, start_pos)
+
+    def tx_struct_obj(self, val_bytes, start_pos=0):
+        '''
+        Description:
+        -----------
+        Insert a byte array into the TX buffer starting at the
+        specified index
+        
+        :param val_bytes:   bytearray - value to be inserted into TX buffer
+        :param start_pos:   int - index of TX buffer where the first byte
+                                  of the value is to be stored in
+        :return: int - index of the last byte of the value in the TX buffer + 1,
+                       None if operation failed
+        '''
       
         for index in range(len(val_bytes)):
             self.txBuff[index + start_pos] = val_bytes[index]

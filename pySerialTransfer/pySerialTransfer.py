@@ -434,7 +434,7 @@ class SerialTransfer(object):
         refByte = self.find_last(pay_len)
 
         if (not refByte == -1) and (refByte <= MAX_PACKET_SIZE):
-            for i in range(pay_len - 1, 0, -1):
+            for i in range(pay_len - 1, -1, -1):
                 if self.txBuff[i] == START_BYTE:
                     self.txBuff[i] = refByte - i
                     refByte = i

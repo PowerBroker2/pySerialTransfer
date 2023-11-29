@@ -35,7 +35,7 @@ if __name__ == '__main__':
                 
                 print('{}{} | {}'.format(testStruct.z, testStruct.y, arr))
                 
-            elif link.status < 0:
+            elif link.status <= 0:
                 if link.status == txfer.CRC_ERROR:
                     print('ERROR: CRC_ERROR')
                 elif link.status == txfer.PAYLOAD_ERROR:

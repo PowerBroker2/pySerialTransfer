@@ -17,7 +17,7 @@ if __name__ == '__main__':
                 y = link.rx_obj(obj_type='f')
                 print(y)
                 
-            elif link.status < 0:
+            elif link.status <= 0:
                 if link.status == txfer.CRC_ERROR:
                     print('ERROR: CRC_ERROR')
                 elif link.status == txfer.PAYLOAD_ERROR:

@@ -540,7 +540,7 @@ class SerialTransfer(object):
                         self.state = find_payload_len
 
                     elif self.state == find_payload_len:
-                        if recChar <= MAX_PACKET_SIZE:
+                        if recChar > 0 and recChar <= MAX_PACKET_SIZE:
                             self.bytesToRec = recChar
                             self.payIndex = 0
                             self.state = find_payload

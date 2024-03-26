@@ -375,6 +375,10 @@ class SerialTransfer(object):
             unpacked_response = struct.unpack(self.byte_format + format_str, buff)[0]
         
         if (obj_type == str) or (obj_type == dict):
+            # remove any trailing bytes of value 0 from data
+            if 0 in unpacked_response:
+                unpacked_response = unpacked_response[:unpacked_response.index(0)]
+
             unpacked_response = unpacked_response.decode('utf-8')
         
         if obj_type == dict:

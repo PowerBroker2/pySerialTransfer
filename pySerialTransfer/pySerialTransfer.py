@@ -131,7 +131,7 @@ def serial_ports():
 
 
 class SerialTransfer(object):
-    def __init__(self, port, baud=115200, restrict_ports=True, debug=True, byte_format=BYTE_FORMATS['little-endian'], timeout=0.05):
+    def __init__(self, port, baud=115200, restrict_ports=True, debug=True, byte_format=BYTE_FORMATS['little-endian'], timeout=0.05, write_timeout=None):
         '''
         Description:
         ------------
@@ -146,6 +146,8 @@ class SerialTransfer(object):
                                       https://docs.python.org/3/library/struct.html#struct-format-strings
         :param timeout:       float - timeout (in s) to set on pySerial for maximum wait for a read from the OS
                                       default 50ms marries up with DEFAULT_TIMEOUT in SerialTransfer
+        :param write_timeout: float - timeout (in s) to set on pySerial for maximum wait for a write operation to the serial port
+                                      default None causes no write timeouts to be raised
         :return: void
         '''
 
@@ -181,6 +183,7 @@ class SerialTransfer(object):
         self.connection.port = self.port_name
         self.connection.baudrate = baud
         self.connection.timeout = timeout
+        self.connection.write_timeout = write_timeout
 
     def open(self):
         '''

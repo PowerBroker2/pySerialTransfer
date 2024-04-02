@@ -568,10 +568,10 @@ class SerialTransfer(object):
                             # Try to receive as many more bytes as we can, but we might not get all of them
                             # if there is a timeout from the OS
                             if self.pay_index != self.bytes_to_rec:
-                                moreBytes = list(self.connection.read(self.bytes_to_rec - self.pay_index))
-                                next_index = self.pay_index + len(moreBytes)
+                                more_bytes = list(self.connection.read(self.bytes_to_rec - self.pay_index))
+                                next_index = self.pay_index + len(more_bytes)
 
-                                self.rx_buff[self.pay_index:next_index] = moreBytes
+                                self.rx_buff[self.pay_index:next_index] = more_bytes
                                 self.pay_index = next_index
 
                             if self.pay_index == self.bytes_to_rec:

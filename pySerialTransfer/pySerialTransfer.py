@@ -156,7 +156,7 @@ class SerialTransfer(object):
 
         self.debug        = debug
         self.id_byte       = 0
-        self.bytesRead    = 0
+        self.bytes_read    = 0
         self.status       = 0
         self.overheadByte = 0xFF
         self.callbacks    = []
@@ -524,7 +524,7 @@ class SerialTransfer(object):
         Parses incoming serial data, analyzes packet contents,
         and reports errors/successful packet reception
 
-        :return self.bytesRead: int - number of bytes read from the received
+        :return self.bytes_read: int - number of bytes read from the received
                                       packet
         '''
 
@@ -552,10 +552,10 @@ class SerialTransfer(object):
                             self.payIndex = 0
                             self.state = find_payload
                         else:
-                            self.bytesRead = 0
+                            self.bytes_read = 0
                             self.state = find_start_byte
                             self.status = PAYLOAD_ERROR
-                            return self.bytesRead
+                            return self.bytes_read
 
                     elif self.state == find_payload:
                         if self.payIndex < self.bytesToRec:
@@ -581,38 +581,38 @@ class SerialTransfer(object):
                         if found_checksum == recChar:
                             self.state = find_end_byte
                         else:
-                            self.bytesRead = 0
+                            self.bytes_read = 0
                             self.state = find_start_byte
                             self.status = CRC_ERROR
-                            return self.bytesRead
+                            return self.bytes_read
 
                     elif self.state == find_end_byte:
                         self.state = find_start_byte
 
                         if recChar == STOP_BYTE:
                             self.unpack_packet(self.bytesToRec)
-                            self.bytesRead = self.bytesToRec
+                            self.bytes_read = self.bytesToRec
                             self.status = NEW_DATA
-                            return self.bytesRead
+                            return self.bytes_read
 
-                        self.bytesRead = 0
+                        self.bytes_read = 0
                         self.status = STOP_BYTE_ERROR
-                        return self.bytesRead
+                        return self.bytes_read
 
                     else:
                         print('ERROR: Undefined state: {}'.format(self.state))
 
-                        self.bytesRead = 0
+                        self.bytes_read = 0
                         self.state = find_start_byte
-                        return self.bytesRead
+                        return self.bytes_read
             else:
-                self.bytesRead = 0
+                self.bytes_read = 0
                 self.status = NO_DATA
-                return self.bytesRead
+                return self.bytes_read
 
-        self.bytesRead = 0
+        self.bytes_read = 0
         self.status = CONTINUE
-        return self.bytesRead
+        return self.bytes_read
     
     def tick(self):
         '''

@@ -22,7 +22,7 @@ if __name__ == '__main__':
                     print('\n\n\nFile Name: {}\n'.format(fileName))
                 
                 else:
-                    nextContents = link.rx_obj(str, start_pos=2, obj_byte_size=link.bytesRead-2)
+                    nextContents = link.rx_obj(str, start_pos=2, obj_byte_size=link.bytes_read - 2)
                     file += nextContents
                     
                     print(nextContents, end='')

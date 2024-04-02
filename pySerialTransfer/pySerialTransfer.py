@@ -256,24 +256,24 @@ class SerialTransfer(object):
             format_str = val_type_override
             
         else:
-            if type(val) == str:
+            if isinstance(val, str):
                 val = val.encode()
                 format_str = '%ds' % len(val)
                 
-            elif type(val) == dict:
+            elif isinstance(val, dict):
                 val = json.dumps(val).encode()
                 format_str = '%ds' % len(val)
                 
-            elif type(val) == float:
+            elif isinstance(val, float):
                 format_str = 'f'
                 
-            elif type(val) == int:
+            elif isinstance(val, int):
                 format_str = 'i'
                 
-            elif type(val) == bool:
+            elif isinstance(val, bool):
                 format_str = '?'
                 
-            elif type(val) == list:
+            elif isinstance(val, list):
                 for el in val:
                     start_pos = self.tx_obj(el, start_pos)
                 

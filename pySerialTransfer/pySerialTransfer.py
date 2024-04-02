@@ -531,24 +531,24 @@ class SerialTransfer(object):
         if self.open():
             if self.connection.in_waiting:
                 while self.connection.in_waiting:
-                    recChar = int.from_bytes(self.connection.read(),
+                    rec_char = int.from_bytes(self.connection.read(),
                                              byteorder='big')
 
                     if self.state == find_start_byte:
-                        if recChar == START_BYTE:
+                        if rec_char == START_BYTE:
                             self.state = find_id_byte
                     
                     elif self.state == find_id_byte:
-                        self.id_byte = recChar
+                        self.id_byte = rec_char
                         self.state = find_overhead_byte
 
                     elif self.state == find_overhead_byte:
-                        self.recOverheadByte = recChar
+                        self.recOverheadByte = rec_char
                         self.state = find_payload_len
 
                     elif self.state == find_payload_len:
-                        if recChar > 0 and recChar <= MAX_PACKET_SIZE:
-                            self.bytesToRec = recChar
+                        if rec_char > 0 and rec_char <= MAX_PACKET_SIZE:
+                            self.bytesToRec = rec_char
                             self.payIndex = 0
                             self.state = find_payload
                         else:
@@ -559,7 +559,7 @@ class SerialTransfer(object):
 
                     elif self.state == find_payload:
                         if self.payIndex < self.bytesToRec:
-                            self.rx_buff[self.payIndex] = recChar
+                            self.rx_buff[self.payIndex] = rec_char
                             self.payIndex += 1
 
                             # Try to receive as many more bytes as we can, but we might not get all of them
@@ -578,7 +578,7 @@ class SerialTransfer(object):
                         found_checksum = self.crc.calculate(
                             self.rx_buff, self.bytesToRec)
 
-                        if found_checksum == recChar:
+                        if found_checksum == rec_char:
                             self.state = find_end_byte
                         else:
                             self.bytes_read = 0
@@ -589,7 +589,7 @@ class SerialTransfer(object):
                     elif self.state == find_end_byte:
                         self.state = find_start_byte
 
-                        if recChar == STOP_BYTE:
+                        if rec_char == STOP_BYTE:
                             self.unpack_packet(self.bytesToRec)
                             self.bytes_read = self.bytesToRec
                             self.status = NEW_DATA

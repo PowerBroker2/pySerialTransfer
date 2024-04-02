@@ -151,6 +151,7 @@ class SerialTransfer(object):
         :return: void
         '''
 
+        self.bytes_to_rec = 0
         self.pay_index = 0
         self.rec_overhead_byte = 0
         self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
@@ -550,7 +551,7 @@ class SerialTransfer(object):
 
                     elif self.state == find_payload_len:
                         if rec_char > 0 and rec_char <= MAX_PACKET_SIZE:
-                            self.bytesToRec = rec_char
+                            self.bytes_to_rec = rec_char
                             self.pay_index = 0
                             self.state = find_payload
                         else:
@@ -560,25 +561,25 @@ class SerialTransfer(object):
                             return self.bytes_read
 
                     elif self.state == find_payload:
-                        if self.pay_index < self.bytesToRec:
+                        if self.pay_index < self.bytes_to_rec:
                             self.rx_buff[self.pay_index] = rec_char
                             self.pay_index += 1
 
                             # Try to receive as many more bytes as we can, but we might not get all of them
                             # if there is a timeout from the OS
-                            if self.pay_index != self.bytesToRec:
-                                moreBytes = list(self.connection.read(self.bytesToRec - self.pay_index))
+                            if self.pay_index != self.bytes_to_rec:
+                                moreBytes = list(self.connection.read(self.bytes_to_rec - self.pay_index))
                                 nextIndex = self.pay_index + len(moreBytes)
 
                                 self.rx_buff[self.pay_index:nextIndex] = moreBytes
                                 self.pay_index = nextIndex
 
-                            if self.pay_index == self.bytesToRec:
+                            if self.pay_index == self.bytes_to_rec:
                                 self.state = find_crc
 
                     elif self.state == find_crc:
                         found_checksum = self.crc.calculate(
-                            self.rx_buff, self.bytesToRec)
+                            self.rx_buff, self.bytes_to_rec)
 
                         if found_checksum == rec_char:
                             self.state = find_end_byte
@@ -592,8 +593,8 @@ class SerialTransfer(object):
                         self.state = find_start_byte
 
                         if rec_char == STOP_BYTE:
-                            self.unpack_packet(self.bytesToRec)
-                            self.bytes_read = self.bytesToRec
+                            self.unpack_packet(self.bytes_to_rec)
+                            self.bytes_read = self.bytes_to_rec
                             self.status = NEW_DATA
                             return self.bytes_read
 

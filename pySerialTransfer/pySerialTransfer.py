@@ -506,16 +506,16 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        testIndex = self.recOverheadByte
+        test_index = self.recOverheadByte
         delta = 0
 
-        if testIndex <= MAX_PACKET_SIZE:
-            while self.rx_buff[testIndex]:
-                delta = self.rx_buff[testIndex]
-                self.rx_buff[testIndex] = START_BYTE
-                testIndex += delta
+        if test_index <= MAX_PACKET_SIZE:
+            while self.rx_buff[test_index]:
+                delta = self.rx_buff[test_index]
+                self.rx_buff[test_index] = START_BYTE
+                test_index += delta
 
-            self.rx_buff[testIndex] = START_BYTE
+            self.rx_buff[test_index] = START_BYTE
 
     def available(self):
         '''

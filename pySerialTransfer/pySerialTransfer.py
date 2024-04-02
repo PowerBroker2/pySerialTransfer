@@ -73,7 +73,7 @@ find_end_byte      = 6
 
 
 def msb(val):
-    return byte_val(val, num_bytes(val) - 1)
+    return byte_val(val, calc_num_bytes(val) - 1)
 
 
 def lsb(val):
@@ -84,7 +84,7 @@ def byte_val(val, pos):
     return int.from_bytes(((val >> (pos * 8)) & 0xFF).to_bytes(2, 'big'), 'big')
 
 
-def num_bytes(val):
+def calc_num_bytes(val):
     num_bits = val.bit_length()
     num_bytes = num_bits // 8
 

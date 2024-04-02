@@ -569,10 +569,10 @@ class SerialTransfer(object):
                             # if there is a timeout from the OS
                             if self.pay_index != self.bytes_to_rec:
                                 moreBytes = list(self.connection.read(self.bytes_to_rec - self.pay_index))
-                                nextIndex = self.pay_index + len(moreBytes)
+                                next_index = self.pay_index + len(moreBytes)
 
-                                self.rx_buff[self.pay_index:nextIndex] = moreBytes
-                                self.pay_index = nextIndex
+                                self.rx_buff[self.pay_index:next_index] = moreBytes
+                                self.pay_index = next_index
 
                             if self.pay_index == self.bytes_to_rec:
                                 self.state = find_crc

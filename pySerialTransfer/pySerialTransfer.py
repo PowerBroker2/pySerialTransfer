@@ -158,7 +158,7 @@ class SerialTransfer(object):
         self.id_byte       = 0
         self.bytes_read    = 0
         self.status       = 0
-        self.overheadByte = 0xFF
+        self.overhead_byte = 0xFF
         self.callbacks    = []
         self.byte_format  = byte_format
 
@@ -391,7 +391,7 @@ class SerialTransfer(object):
         Description:
         ------------
         Calculates the COBS (Consistent Overhead Stuffing) Overhead
-        byte and stores it in the class's overheadByte variable. This
+        byte and stores it in the class's overhead_byte variable. This
         variable holds the byte position (within the payload) of the
         first payload byte equal to that of START_BYTE
 
@@ -400,11 +400,11 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        self.overheadByte = 0xFF
+        self.overhead_byte = 0xFF
 
         for i in range(pay_len):
             if self.tx_buff[i] == START_BYTE:
-                self.overheadByte = i
+                self.overhead_byte = i
                 break
 
     def find_last(self, pay_len):
@@ -468,7 +468,7 @@ class SerialTransfer(object):
 
             stack.append(START_BYTE)
             stack.append(packet_id)
-            stack.append(self.overheadByte)
+            stack.append(self.overhead_byte)
             stack.append(message_len)
 
             for i in range(message_len):

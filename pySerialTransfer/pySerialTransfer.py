@@ -151,6 +151,7 @@ class SerialTransfer(object):
         :return: void
         '''
 
+        self.rec_overhead_byte = 0
         self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
         self.rx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
 
@@ -506,7 +507,7 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        test_index = self.recOverheadByte
+        test_index = self.rec_overhead_byte
         delta = 0
 
         if test_index <= MAX_PACKET_SIZE:
@@ -543,7 +544,7 @@ class SerialTransfer(object):
                         self.state = find_overhead_byte
 
                     elif self.state == find_overhead_byte:
-                        self.recOverheadByte = rec_char
+                        self.rec_overhead_byte = rec_char
                         self.state = find_payload_len
 
                     elif self.state == find_payload_len:

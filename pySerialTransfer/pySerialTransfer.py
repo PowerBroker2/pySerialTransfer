@@ -151,14 +151,17 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        self.txBuff = [' ' for i in range(MAX_PACKET_SIZE)]
-        self.rxBuff = [' ' for i in range(MAX_PACKET_SIZE)]
+        self.bytes_to_rec = 0
+        self.pay_index = 0
+        self.rec_overhead_byte = 0
+        self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
+        self.rx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
 
         self.debug        = debug
-        self.idByte       = 0
-        self.bytesRead    = 0
+        self.id_byte       = 0
+        self.bytes_read    = 0
         self.status       = 0
-        self.overheadByte = 0xFF
+        self.overhead_byte = 0xFF
         self.callbacks    = []
         self.byte_format  = byte_format
 
@@ -305,7 +308,7 @@ class SerialTransfer(object):
         '''
       
         for index in range(len(val_bytes)):
-            self.txBuff[index + start_pos] = val_bytes[index]
+            self.tx_buff[index + start_pos] = val_bytes[index]
         
         return start_pos + len(val_bytes)
 
@@ -336,23 +339,23 @@ class SerialTransfer(object):
         '''
         
         if (obj_type == str) or (obj_type == dict):
-            buff = bytes(self.rxBuff[start_pos:(start_pos + obj_byte_size)])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + obj_byte_size)])
             format_str = '%ds' % len(buff)
             
         elif obj_type == float:
             format_str = 'f'
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == int:
             format_str = 'i'
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == bool:
             format_str = '?'
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == list:
-            buff = bytes(self.rxBuff[start_pos:(start_pos + obj_byte_size)])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + obj_byte_size)])
             
             if list_format:
                 arr = array(list_format, buff)
@@ -362,7 +365,7 @@ class SerialTransfer(object):
                 return None
         
         elif type(obj_type) == str:
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[obj_type])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[obj_type])])
             format_str = obj_type
         
         else:
@@ -391,7 +394,7 @@ class SerialTransfer(object):
         Description:
         ------------
         Calculates the COBS (Consistent Overhead Stuffing) Overhead
-        byte and stores it in the class's overheadByte variable. This
+        byte and stores it in the class's overhead_byte variable. This
         variable holds the byte position (within the payload) of the
         first payload byte equal to that of START_BYTE
 
@@ -400,11 +403,11 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        self.overheadByte = 0xFF
+        self.overhead_byte = 0xFF
 
         for i in range(pay_len):
-            if self.txBuff[i] == START_BYTE:
-                self.overheadByte = i
+            if self.tx_buff[i] == START_BYTE:
+                self.overhead_byte = i
                 break
 
     def find_last(self, pay_len):
@@ -422,7 +425,7 @@ class SerialTransfer(object):
 
         if pay_len <= MAX_PACKET_SIZE:
             for i in range(pay_len - 1, -1, -1):
-                if self.txBuff[i] == START_BYTE:
+                if self.tx_buff[i] == START_BYTE:
                     return i
         return -1
 
@@ -438,13 +441,13 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        refByte = self.find_last(pay_len)
+        ref_byte = self.find_last(pay_len)
 
-        if (not refByte == -1) and (refByte <= MAX_PACKET_SIZE):
+        if (not ref_byte == -1) and (ref_byte <= MAX_PACKET_SIZE):
             for i in range(pay_len - 1, -1, -1):
-                if self.txBuff[i] == START_BYTE:
-                    self.txBuff[i] = refByte - i
-                    refByte = i
+                if self.tx_buff[i] == START_BYTE:
+                    self.tx_buff[i] = ref_byte - i
+                    ref_byte = i
 
     def send(self, message_len, packet_id=0):
         '''
@@ -452,7 +455,7 @@ class SerialTransfer(object):
         ------------
         Send a specified number of bytes in packetized form
 
-        :param message_len: int - number of bytes from the txBuff to send as
+        :param message_len: int - number of bytes from the tx_buff to send as
                                   payload in the packet
 
         :return: bool - whether or not the operation was successful
@@ -464,18 +467,18 @@ class SerialTransfer(object):
         try:
             self.calc_overhead(message_len)
             self.stuff_packet(message_len)
-            found_checksum = self.crc.calculate(self.txBuff, message_len)
+            found_checksum = self.crc.calculate(self.tx_buff, message_len)
 
             stack.append(START_BYTE)
             stack.append(packet_id)
-            stack.append(self.overheadByte)
+            stack.append(self.overhead_byte)
             stack.append(message_len)
 
             for i in range(message_len):
-                if type(self.txBuff[i]) == str:
-                    val = ord(self.txBuff[i])
+                if type(self.tx_buff[i]) == str:
+                    val = ord(self.tx_buff[i])
                 else:
-                    val = int(self.txBuff[i])
+                    val = int(self.tx_buff[i])
 
                 stack.append(val)
 
@@ -506,16 +509,16 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        testIndex = self.recOverheadByte
+        test_index = self.rec_overhead_byte
         delta = 0
 
-        if testIndex <= MAX_PACKET_SIZE:
-            while self.rxBuff[testIndex]:
-                delta = self.rxBuff[testIndex]
-                self.rxBuff[testIndex] = START_BYTE
-                testIndex += delta
+        if test_index <= MAX_PACKET_SIZE:
+            while self.rx_buff[test_index]:
+                delta = self.rx_buff[test_index]
+                self.rx_buff[test_index] = START_BYTE
+                test_index += delta
 
-            self.rxBuff[testIndex] = START_BYTE
+            self.rx_buff[test_index] = START_BYTE
 
     def available(self):
         '''
@@ -524,95 +527,95 @@ class SerialTransfer(object):
         Parses incoming serial data, analyzes packet contents,
         and reports errors/successful packet reception
 
-        :return self.bytesRead: int - number of bytes read from the received
+        :return self.bytes_read: int - number of bytes read from the received
                                       packet
         '''
 
         if self.open():
             if self.connection.in_waiting:
                 while self.connection.in_waiting:
-                    recChar = int.from_bytes(self.connection.read(),
+                    rec_char = int.from_bytes(self.connection.read(),
                                              byteorder='big')
 
                     if self.state == find_start_byte:
-                        if recChar == START_BYTE:
+                        if rec_char == START_BYTE:
                             self.state = find_id_byte
                     
                     elif self.state == find_id_byte:
-                        self.idByte = recChar
+                        self.id_byte = rec_char
                         self.state = find_overhead_byte
 
                     elif self.state == find_overhead_byte:
-                        self.recOverheadByte = recChar
+                        self.rec_overhead_byte = rec_char
                         self.state = find_payload_len
 
                     elif self.state == find_payload_len:
-                        if recChar > 0 and recChar <= MAX_PACKET_SIZE:
-                            self.bytesToRec = recChar
-                            self.payIndex = 0
+                        if rec_char > 0 and rec_char <= MAX_PACKET_SIZE:
+                            self.bytes_to_rec = rec_char
+                            self.pay_index = 0
                             self.state = find_payload
                         else:
-                            self.bytesRead = 0
+                            self.bytes_read = 0
                             self.state = find_start_byte
                             self.status = PAYLOAD_ERROR
-                            return self.bytesRead
+                            return self.bytes_read
 
                     elif self.state == find_payload:
-                        if self.payIndex < self.bytesToRec:
-                            self.rxBuff[self.payIndex] = recChar
-                            self.payIndex += 1
+                        if self.pay_index < self.bytes_to_rec:
+                            self.rx_buff[self.pay_index] = rec_char
+                            self.pay_index += 1
 
                             # Try to receive as many more bytes as we can, but we might not get all of them
                             # if there is a timeout from the OS
-                            if self.payIndex != self.bytesToRec:
-                                moreBytes = list(self.connection.read(self.bytesToRec - self.payIndex))
-                                nextIndex = self.payIndex + len(moreBytes)
+                            if self.pay_index != self.bytes_to_rec:
+                                more_bytes = list(self.connection.read(self.bytes_to_rec - self.pay_index))
+                                next_index = self.pay_index + len(more_bytes)
 
-                                self.rxBuff[self.payIndex:nextIndex] = moreBytes
-                                self.payIndex = nextIndex
+                                self.rx_buff[self.pay_index:next_index] = more_bytes
+                                self.pay_index = next_index
 
-                            if self.payIndex == self.bytesToRec:
+                            if self.pay_index == self.bytes_to_rec:
                                 self.state = find_crc
 
                     elif self.state == find_crc:
                         found_checksum = self.crc.calculate(
-                            self.rxBuff, self.bytesToRec)
+                            self.rx_buff, self.bytes_to_rec)
 
-                        if found_checksum == recChar:
+                        if found_checksum == rec_char:
                             self.state = find_end_byte
                         else:
-                            self.bytesRead = 0
+                            self.bytes_read = 0
                             self.state = find_start_byte
                             self.status = CRC_ERROR
-                            return self.bytesRead
+                            return self.bytes_read
 
                     elif self.state == find_end_byte:
                         self.state = find_start_byte
 
-                        if recChar == STOP_BYTE:
-                            self.unpack_packet(self.bytesToRec)
-                            self.bytesRead = self.bytesToRec
+                        if rec_char == STOP_BYTE:
+                            self.unpack_packet(self.bytes_to_rec)
+                            self.bytes_read = self.bytes_to_rec
                             self.status = NEW_DATA
-                            return self.bytesRead
+                            return self.bytes_read
 
-                        self.bytesRead = 0
+                        self.bytes_read = 0
                         self.status = STOP_BYTE_ERROR
-                        return self.bytesRead
+                        return self.bytes_read
 
                     else:
                         print('ERROR: Undefined state: {}'.format(self.state))
 
-                        self.bytesRead = 0
+                        self.bytes_read = 0
                         self.state = find_start_byte
-                        return self.bytesRead
+                        return self.bytes_read
             else:
-                self.bytesRead = 0
+                self.bytes_read = 0
                 self.status = NO_DATA
-                return self.bytesRead
+                return self.bytes_read
 
-        self.bytesRead = 0
+        self.bytes_read = 0
         self.status = CONTINUE
-        return self.bytesRead
+        return self.bytes_read
     
     def tick(self):
         '''
@@ -627,10 +630,10 @@ class SerialTransfer(object):
         '''
         
         if self.available():
-            if self.idByte < len(self.callbacks):
-                self.callbacks[self.idByte]()
+            if self.id_byte < len(self.callbacks):
+                self.callbacks[self.id_byte]()
             elif self.debug:
-                print('ERROR: No callback available for packet ID {}'.format(self.idByte))
+                print('ERROR: No callback available for packet ID {}'.format(self.id_byte))
             
             return True
         

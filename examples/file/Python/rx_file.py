@@ -15,14 +15,14 @@ if __name__ == '__main__':
     
         while True:
             if link.available():
-                if not link.idByte:
+                if not link.id_byte:
                     file = ''
                     fileName = link.rx_obj(str, obj_byte_size=8)
                     
                     print('\n\n\nFile Name: {}\n'.format(fileName))
                 
                 else:
-                    nextContents = link.rx_obj(str, start_pos=2, obj_byte_size=link.bytesRead-2)
+                    nextContents = link.rx_obj(str, start_pos=2, obj_byte_size=link.bytes_read - 2)
                     file += nextContents
                     
                     print(nextContents, end='')

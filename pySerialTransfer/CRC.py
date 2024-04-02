@@ -55,7 +55,7 @@ class CRC(object):
 
 
 if __name__ == '__main__':
-    crc = CRC()
-    print(crc.print_table())
+    crc_instance = CRC()
+    print(crc_instance.print_table())
     print(' ')
-    print(hex(crc.calculate(0x31)).upper().replace('X', 'x'))
+    print(hex(crc_instance.calculate(0x31)).upper().replace('X', 'x'))

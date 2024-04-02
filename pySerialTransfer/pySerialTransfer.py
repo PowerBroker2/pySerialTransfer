@@ -151,7 +151,7 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        self.txBuff = [' ' for i in range(MAX_PACKET_SIZE)]
+        self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
         self.rxBuff = [' ' for i in range(MAX_PACKET_SIZE)]
 
         self.debug        = debug
@@ -305,7 +305,7 @@ class SerialTransfer(object):
         '''
       
         for index in range(len(val_bytes)):
-            self.txBuff[index + start_pos] = val_bytes[index]
+            self.tx_buff[index + start_pos] = val_bytes[index]
         
         return start_pos + len(val_bytes)
 
@@ -403,7 +403,7 @@ class SerialTransfer(object):
         self.overheadByte = 0xFF
 
         for i in range(pay_len):
-            if self.txBuff[i] == START_BYTE:
+            if self.tx_buff[i] == START_BYTE:
                 self.overheadByte = i
                 break
 
@@ -422,7 +422,7 @@ class SerialTransfer(object):
 
         if pay_len <= MAX_PACKET_SIZE:
             for i in range(pay_len - 1, -1, -1):
-                if self.txBuff[i] == START_BYTE:
+                if self.tx_buff[i] == START_BYTE:
                     return i
         return -1
 
@@ -442,8 +442,8 @@ class SerialTransfer(object):
 
         if (not refByte == -1) and (refByte <= MAX_PACKET_SIZE):
             for i in range(pay_len - 1, -1, -1):
-                if self.txBuff[i] == START_BYTE:
-                    self.txBuff[i] = refByte - i
+                if self.tx_buff[i] == START_BYTE:
+                    self.tx_buff[i] = refByte - i
                     refByte = i
 
     def send(self, message_len, packet_id=0):
@@ -452,7 +452,7 @@ class SerialTransfer(object):
         ------------
         Send a specified number of bytes in packetized form
 
-        :param message_len: int - number of bytes from the txBuff to send as
+        :param message_len: int - number of bytes from the tx_buff to send as
                                   payload in the packet
 
         :return: bool - whether or not the operation was successful
@@ -464,7 +464,7 @@ class SerialTransfer(object):
         try:
             self.calc_overhead(message_len)
             self.stuff_packet(message_len)
-            found_checksum = self.crc.calculate(self.txBuff, message_len)
+            found_checksum = self.crc.calculate(self.tx_buff, message_len)
 
             stack.append(START_BYTE)
             stack.append(packet_id)
@@ -472,10 +472,10 @@ class SerialTransfer(object):
             stack.append(message_len)
 
             for i in range(message_len):
-                if type(self.txBuff[i]) == str:
-                    val = ord(self.txBuff[i])
+                if type(self.tx_buff[i]) == str:
+                    val = ord(self.tx_buff[i])
                 else:
-                    val = int(self.txBuff[i])
+                    val = int(self.tx_buff[i])
 
                 stack.append(val)
 

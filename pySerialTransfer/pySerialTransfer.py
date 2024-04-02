@@ -438,13 +438,13 @@ class SerialTransfer(object):
         :return: void
         '''
 
-        refByte = self.find_last(pay_len)
+        ref_byte = self.find_last(pay_len)
 
-        if (not refByte == -1) and (refByte <= MAX_PACKET_SIZE):
+        if (not ref_byte == -1) and (ref_byte <= MAX_PACKET_SIZE):
             for i in range(pay_len - 1, -1, -1):
                 if self.tx_buff[i] == START_BYTE:
-                    self.tx_buff[i] = refByte - i
-                    refByte = i
+                    self.tx_buff[i] = ref_byte - i
+                    ref_byte = i
 
     def send(self, message_len, packet_id=0):
         '''

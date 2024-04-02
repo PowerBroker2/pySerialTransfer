@@ -151,6 +151,7 @@ class SerialTransfer(object):
         :return: void
         '''
 
+        self.pay_index = 0
         self.rec_overhead_byte = 0
         self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
         self.rx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
@@ -550,7 +551,7 @@ class SerialTransfer(object):
                     elif self.state == find_payload_len:
                         if rec_char > 0 and rec_char <= MAX_PACKET_SIZE:
                             self.bytesToRec = rec_char
-                            self.payIndex = 0
+                            self.pay_index = 0
                             self.state = find_payload
                         else:
                             self.bytes_read = 0
@@ -559,20 +560,20 @@ class SerialTransfer(object):
                             return self.bytes_read
 
                     elif self.state == find_payload:
-                        if self.payIndex < self.bytesToRec:
-                            self.rx_buff[self.payIndex] = rec_char
-                            self.payIndex += 1
+                        if self.pay_index < self.bytesToRec:
+                            self.rx_buff[self.pay_index] = rec_char
+                            self.pay_index += 1
 
                             # Try to receive as many more bytes as we can, but we might not get all of them
                             # if there is a timeout from the OS
-                            if self.payIndex != self.bytesToRec:
-                                moreBytes = list(self.connection.read(self.bytesToRec - self.payIndex))
-                                nextIndex = self.payIndex + len(moreBytes)
+                            if self.pay_index != self.bytesToRec:
+                                moreBytes = list(self.connection.read(self.bytesToRec - self.pay_index))
+                                nextIndex = self.pay_index + len(moreBytes)
 
-                                self.rx_buff[self.payIndex:nextIndex] = moreBytes
-                                self.payIndex = nextIndex
+                                self.rx_buff[self.pay_index:nextIndex] = moreBytes
+                                self.pay_index = nextIndex
 
-                            if self.payIndex == self.bytesToRec:
+                            if self.pay_index == self.bytesToRec:
                                 self.state = find_crc
 
                     elif self.state == find_crc:

@@ -155,7 +155,7 @@ class SerialTransfer(object):
         self.rx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
 
         self.debug        = debug
-        self.idByte       = 0
+        self.id_byte       = 0
         self.bytesRead    = 0
         self.status       = 0
         self.overheadByte = 0xFF
@@ -539,7 +539,7 @@ class SerialTransfer(object):
                             self.state = find_id_byte
                     
                     elif self.state == find_id_byte:
-                        self.idByte = recChar
+                        self.id_byte = recChar
                         self.state = find_overhead_byte
 
                     elif self.state == find_overhead_byte:
@@ -627,10 +627,10 @@ class SerialTransfer(object):
         '''
         
         if self.available():
-            if self.idByte < len(self.callbacks):
-                self.callbacks[self.idByte]()
+            if self.id_byte < len(self.callbacks):
+                self.callbacks[self.id_byte]()
             elif self.debug:
-                print('ERROR: No callback available for packet ID {}'.format(self.idByte))
+                print('ERROR: No callback available for packet ID {}'.format(self.id_byte))
             
             return True
         

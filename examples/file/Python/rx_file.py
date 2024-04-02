@@ -15,7 +15,7 @@ if __name__ == '__main__':
     
         while True:
             if link.available():
-                if not link.idByte:
+                if not link.id_byte:
                     file = ''
                     fileName = link.rx_obj(str, obj_byte_size=8)
                     

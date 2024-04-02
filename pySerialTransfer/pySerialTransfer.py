@@ -152,7 +152,7 @@ class SerialTransfer(object):
         '''
 
         self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
-        self.rxBuff = [' ' for i in range(MAX_PACKET_SIZE)]
+        self.rx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
 
         self.debug        = debug
         self.idByte       = 0
@@ -336,23 +336,23 @@ class SerialTransfer(object):
         '''
         
         if (obj_type == str) or (obj_type == dict):
-            buff = bytes(self.rxBuff[start_pos:(start_pos + obj_byte_size)])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + obj_byte_size)])
             format_str = '%ds' % len(buff)
             
         elif obj_type == float:
             format_str = 'f'
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == int:
             format_str = 'i'
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == bool:
             format_str = '?'
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[format_str])])
             
         elif obj_type == list:
-            buff = bytes(self.rxBuff[start_pos:(start_pos + obj_byte_size)])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + obj_byte_size)])
             
             if list_format:
                 arr = array(list_format, buff)
@@ -362,7 +362,7 @@ class SerialTransfer(object):
                 return None
         
         elif type(obj_type) == str:
-            buff = bytes(self.rxBuff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[obj_type])])
+            buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[obj_type])])
             format_str = obj_type
         
         else:
@@ -510,12 +510,12 @@ class SerialTransfer(object):
         delta = 0
 
         if testIndex <= MAX_PACKET_SIZE:
-            while self.rxBuff[testIndex]:
-                delta = self.rxBuff[testIndex]
-                self.rxBuff[testIndex] = START_BYTE
+            while self.rx_buff[testIndex]:
+                delta = self.rx_buff[testIndex]
+                self.rx_buff[testIndex] = START_BYTE
                 testIndex += delta
 
-            self.rxBuff[testIndex] = START_BYTE
+            self.rx_buff[testIndex] = START_BYTE
 
     def available(self):
         '''
@@ -559,7 +559,7 @@ class SerialTransfer(object):
 
                     elif self.state == find_payload:
                         if self.payIndex < self.bytesToRec:
-                            self.rxBuff[self.payIndex] = recChar
+                            self.rx_buff[self.payIndex] = recChar
                             self.payIndex += 1
 
                             # Try to receive as many more bytes as we can, but we might not get all of them
@@ -568,7 +568,7 @@ class SerialTransfer(object):
                                 moreBytes = list(self.connection.read(self.bytesToRec - self.payIndex))
                                 nextIndex = self.payIndex + len(moreBytes)
 
-                                self.rxBuff[self.payIndex:nextIndex] = moreBytes
+                                self.rx_buff[self.payIndex:nextIndex] = moreBytes
                                 self.payIndex = nextIndex
 
                             if self.payIndex == self.bytesToRec:
@@ -576,7 +576,7 @@ class SerialTransfer(object):
 
                     elif self.state == find_crc:
                         found_checksum = self.crc.calculate(
-                            self.rxBuff, self.bytesToRec)
+                            self.rx_buff, self.bytesToRec)
 
                         if found_checksum == recChar:
                             self.state = find_end_byte

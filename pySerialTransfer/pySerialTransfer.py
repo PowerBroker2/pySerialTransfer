@@ -508,7 +508,6 @@ class SerialTransfer(object):
         '''
 
         test_index = self.rec_overhead_byte
-        delta = 0
 
         if test_index <= MAX_PACKET_SIZE:
             while self.rx_buff[test_index]:

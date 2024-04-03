@@ -154,8 +154,8 @@ class SerialTransfer(object):
         self.bytes_to_rec = 0
         self.pay_index = 0
         self.rec_overhead_byte = 0
-        self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
-        self.rx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
+        self.tx_buff = [' '] * MAX_PACKET_SIZE
+        self.rx_buff = [' '] * MAX_PACKET_SIZE
 
         self.debug        = debug
         self.id_byte       = 0

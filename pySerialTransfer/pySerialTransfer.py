@@ -217,7 +217,7 @@ class SerialTransfer(object):
         :return: void
         '''
         
-        if type(callbacks) == list:
+        if isinstance(callbacks, list):
             self.callbacks = callbacks
         else:
             raise InvalidCallbackList('Parameter "callbacks" is not of type "list"')
@@ -364,7 +364,7 @@ class SerialTransfer(object):
             else:
                 return None
         
-        elif type(obj_type) == str:
+        elif isinstance(obj_type, str):
             buff = bytes(self.rx_buff[start_pos:(start_pos + STRUCT_FORMAT_LENGTHS[obj_type])])
             format_str = obj_type
         
@@ -475,7 +475,7 @@ class SerialTransfer(object):
             stack.append(message_len)
 
             for i in range(message_len):
-                if type(self.tx_buff[i]) == str:
+                if isinstance(self.tx_buff[i], str):
                     val = ord(self.tx_buff[i])
                 else:
                     val = int(self.tx_buff[i])

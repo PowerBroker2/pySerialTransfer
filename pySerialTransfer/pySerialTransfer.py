@@ -498,13 +498,11 @@ class SerialTransfer(object):
 
             return False
 
-    def unpack_packet(self, pay_len):
+    def unpack_packet(self):
         '''
         Description:
         ------------
         Unpacks all COBS-stuffed bytes within the array
-
-        :param pay_len: int - number of bytes in the payload
 
         :return: void
         '''
@@ -593,7 +591,7 @@ class SerialTransfer(object):
                         self.state = find_start_byte
 
                         if rec_char == STOP_BYTE:
-                            self.unpack_packet(self.bytes_to_rec)
+                            self.unpack_packet()
                             self.bytes_read = self.bytes_to_rec
                             self.status = NEW_DATA
                             return self.bytes_read

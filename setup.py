@@ -16,5 +16,12 @@ setup(
     download_url     = 'https://github.com/PowerBroker2/pySerialTransfer/archive/2.6.10.tar.gz',
     keywords         = ['Arduino', 'serial', 'usb', 'protocol', 'communication'],
     classifiers      = [],
-    install_requires = ['pyserial']
+    install_requires = ['pyserial'],
+    extras_require   = {
+        'dev': [
+            'pytest>=8.1.1',
+            'pytest-cov>=5.0.0',
+            'pytest-mock>=3.14.0',
+        ],
+    },
 )

@@ -154,8 +154,8 @@ class SerialTransfer(object):
         self.bytes_to_rec = 0
         self.pay_index = 0
         self.rec_overhead_byte = 0
-        self.tx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
-        self.rx_buff = [' ' for i in range(MAX_PACKET_SIZE)]
+        self.tx_buff = [' '] * MAX_PACKET_SIZE
+        self.rx_buff = [' '] * MAX_PACKET_SIZE
 
         self.debug        = debug
         self.id_byte       = 0
@@ -498,19 +498,16 @@ class SerialTransfer(object):
 
             return False
 
-    def unpack_packet(self, pay_len):
+    def unpack_packet(self):
         '''
         Description:
         ------------
         Unpacks all COBS-stuffed bytes within the array
 
-        :param pay_len: int - number of bytes in the payload
-
         :return: void
         '''
 
         test_index = self.rec_overhead_byte
-        delta = 0
 
         if test_index <= MAX_PACKET_SIZE:
             while self.rx_buff[test_index]:
@@ -593,7 +590,7 @@ class SerialTransfer(object):
                         self.state = find_start_byte
 
                         if rec_char == STOP_BYTE:
-                            self.unpack_packet(self.bytes_to_rec)
+                            self.unpack_packet()
                             self.bytes_read = self.bytes_to_rec
                             self.status = NEW_DATA
                             return self.bytes_read

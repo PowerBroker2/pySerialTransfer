@@ -6,7 +6,7 @@ class CRC(object):
         self.poly      = polynomial & 0xFF
         self.crc_len   = crc_len
         self.table_len = pow(2, crc_len)
-        self.cs_table  = [' ' for x in range(self.table_len)]
+        self.cs_table  = [' '] * self.table_len
         
         self.generate_table()
     

@@ -267,11 +267,11 @@ class SerialTransfer(object):
             elif isinstance(val, float):
                 format_str = 'f'
                 
-            elif isinstance(val, int):
-                format_str = 'i'
-                
             elif isinstance(val, bool):
                 format_str = '?'
+                
+            elif isinstance(val, int):
+                format_str = 'i'
                 
             elif isinstance(val, list):
                 for el in val:

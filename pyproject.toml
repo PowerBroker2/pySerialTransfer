@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pySerialTransfer"
+description = "Python package used to transmit and receive low overhead byte packets - especially useful for PC<-->Arduino USB communication (compatible with https://github.com/PowerBroker2/SerialTransfer)"
+readme = "README.md"
+version = "2.6.10"
+authors = [
+    { name = "Power_Broker", email = "gitstuff2@gmail.com" },
+]
+license = { file = "LICENSE" }
+dependencies = ["pySerial"]
+requires-python = ">=3.8"
+classifiers = []
+keywords = ["Arduino", "serial", "usb", "protocol", "communication"]
+
+[project.urls]
+Homepage = "https://github.com/PowerBroker2/pySerialTransfer"
+"Latest Release" = "https://github.com/PowerBroker2/pySerialTransfer/archive/2.6.10.tar.gz"

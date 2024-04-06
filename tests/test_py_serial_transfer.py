@@ -222,7 +222,7 @@ def test_set_callbacks():
     assert st.callbacks == callbacks    
         
 
-def test_set_callbacks_raises_on_invalid_callbacks():
+def test_set_callbacks_raises_on_invalid_callback_types():
     """Test that the set_callbacks method raises an InvalidCallbackList when the callbacks parameter is not a list"""
     # Create an instance of SerialTransfer
     st = SerialTransfer('COM3')
@@ -232,7 +232,20 @@ def test_set_callbacks_raises_on_invalid_callbacks():
     
     # Call set_callbacks
     with pytest.raises(InvalidCallbackList):
-        st.set_callbacks(callbacks)
+        st.set_callbacks(callbacks) #  type: ignore
+
+
+def test_set_callbacks_raises_on_non_callable_callbacks():
+    """Test that the set_callbacks method raises a TypeError when the callbacks parameter is not a list"""
+    # Create an instance of SerialTransfer
+    st = SerialTransfer('COM3')
+
+    # Set up a specific callbacks dictionary
+    callbacks = ['foo', 'bar']
+
+    # Call set_callbacks
+    with pytest.raises(InvalidCallbackList):
+        st.set_callbacks(callbacks)  # type: ignore
     
     
 @pytest.mark.parametrize("val, start_pos, byte_format, val_type_override, expected", [
@@ -378,17 +391,30 @@ def test_tick_with_valid_data_and_callback():
     callback.assert_called_once()
     
     
-@pytest.mark.xfail(reason="callbacks are not tested that they are callable")    
-def test_tick_with_valid_data_and_non_callable_callback():
-    """Test that the tick method returns False when non callable callbacks are passed."""
+def test_set_callbacks_with_non_callable_items():
+    """Test that set_callbacks raises an exception when non callable callbacks are passed, and that the callbacks 
+    property is not modified."""
     st = SerialTransfer('COM3')
-    callback = MagicMock()
-    st.set_callbacks(["i'm not callable", ])
-    incoming_byte_values = [0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81]
-    make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
-    result = st.tick()
-    assert result is True
-    callback.assert_not_called()
+    original_callbacks = st.callbacks
+    
+    def i_am_callable():
+        pass
+    
+    with pytest.raises(InvalidCallbackList):
+        st.set_callbacks(["i'm not callable", i_am_callable])
+    assert st.callbacks == original_callbacks
+    
+
+def test_set_callbacks_with_non_iterable():
+    """Test that set_callbacks raises an exception when non list|tuple callbacks are passed, and that the callbacks
+    property is not modified."""
+    st = SerialTransfer('COM3')
+    original_callbacks = st.callbacks
+    
+    with pytest.raises(InvalidCallbackList):
+        st.set_callbacks(True)  # type: ignore
+    assert st.callbacks == original_callbacks
+    
     
 
 @patch('builtins.print')

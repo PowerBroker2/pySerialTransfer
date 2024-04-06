@@ -634,7 +634,7 @@ class SerialTransfer(object):
             
             return True
         
-        elif self.debug and not self.status:
+        elif self.debug and self.status in [CRC_ERROR, PAYLOAD_ERROR, STOP_BYTE_ERROR]:
             if self.status == CRC_ERROR:
                 err_str = 'CRC_ERROR'
             elif self.status == PAYLOAD_ERROR:

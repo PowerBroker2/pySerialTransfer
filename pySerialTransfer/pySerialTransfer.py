@@ -1,6 +1,8 @@
 import os
 import json
 import struct
+from typing import Union
+
 import serial
 import serial.tools.list_ports
 from array import array
@@ -206,21 +208,24 @@ class SerialTransfer(object):
                 return False
         return True
     
-    def set_callbacks(self, callbacks):
+    def set_callbacks(self, callbacks: Union[list[callable], tuple[callable]]):
         '''
         Description:
         ------------
-        Specify a list of callback functions to be automatically called by
+        Specify a sequence of callback functions to be automatically called by
         self.tick() when a new packet is fully parsed. The ID of the parsed
         packet is then used to determine which callback needs to be called.
 
         :return: void
         '''
         
-        if isinstance(callbacks, list):
-            self.callbacks = callbacks
-        else:
-            raise InvalidCallbackList('Parameter "callbacks" is not of type "list"')
+        if not isinstance(callbacks, (list, tuple)):
+            raise InvalidCallbackList('Parameter "callbacks" is not of type "list" or "tuple"')
+        
+        if not all([callable(cb) for cb in callbacks]):
+            raise InvalidCallbackList('One or more elements in "callbacks" are not callable')
+        
+        self.callbacks = callbacks
 
     def close(self):
         '''

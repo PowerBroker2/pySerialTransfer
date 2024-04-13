@@ -4,10 +4,13 @@ import pytest
 import serial
 
 from pySerialTransfer.pySerialTransfer import (
-    SerialTransfer,
+    InvalidCallbackList,
     InvalidSerialPort,
+    SerialTransfer,
     State,
-    BYTE_FORMATS, START_BYTE, MAX_PACKET_SIZE, InvalidCallbackList,
+    BYTE_FORMATS, 
+    MAX_PACKET_SIZE, 
+    START_BYTE,
 )
 
 

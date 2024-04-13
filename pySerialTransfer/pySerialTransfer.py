@@ -68,13 +68,14 @@ ARRAY_FORMAT_LENGTHS = {'b': 1,
                         'd': 8}
 
 
-find_start_byte    = 0
-find_id_byte       = 1
-find_overhead_byte = 2
-find_payload_len   = 3
-find_payload       = 4
-find_crc           = 5
-find_end_byte      = 6
+class State(Enum):
+    FIND_START_BYTE    = 0
+    FIND_ID_BYTE       = 1
+    FIND_OVERHEAD_BYTE = 2
+    FIND_PAYLOAD_LEN   = 3
+    FIND_PAYLOAD       = 4
+    FIND_CRC           = 5
+    FIND_END_BYTE      = 6
 
 
 def msb(val):
@@ -170,7 +171,7 @@ class SerialTransfer(object):
         self.callbacks    = []
         self.byte_format  = byte_format
 
-        self.state = find_start_byte
+        self.state = State.FIND_START_BYTE
         
         if restrict_ports:
             self.port_name = None
@@ -542,30 +543,30 @@ class SerialTransfer(object):
                     rec_char = int.from_bytes(self.connection.read(),
                                              byteorder='big')
 
-                    if self.state == find_start_byte:
+                    if self.state == State.FIND_START_BYTE:
                         if rec_char == START_BYTE:
-                            self.state = find_id_byte
+                            self.state = State.FIND_ID_BYTE
                     
-                    elif self.state == find_id_byte:
+                    elif self.state == State.FIND_ID_BYTE:
                         self.id_byte = rec_char
-                        self.state = find_overhead_byte
+                        self.state = State.FIND_OVERHEAD_BYTE
 
-                    elif self.state == find_overhead_byte:
+                    elif self.state == State.FIND_OVERHEAD_BYTE:
                         self.rec_overhead_byte = rec_char
-                        self.state = find_payload_len
+                        self.state = State.FIND_PAYLOAD_LEN
 
-                    elif self.state == find_payload_len:
+                    elif self.state == State.FIND_PAYLOAD_LEN:
                         if rec_char > 0 and rec_char <= MAX_PACKET_SIZE:
                             self.bytes_to_rec = rec_char
                             self.pay_index = 0
-                            self.state = find_payload
+                            self.state = State.FIND_PAYLOAD
                         else:
                             self.bytes_read = 0
-                            self.state = find_start_byte
+                            self.state = State.FIND_START_BYTE
                             self.status = Status.PAYLOAD_ERROR
                             return self.bytes_read
 
-                    elif self.state == find_payload:
+                    elif self.state == State.FIND_PAYLOAD:
                         if self.pay_index < self.bytes_to_rec:
                             self.rx_buff[self.pay_index] = rec_char
                             self.pay_index += 1
@@ -580,22 +581,22 @@ class SerialTransfer(object):
                                 self.pay_index = next_index
 
                             if self.pay_index == self.bytes_to_rec:
-                                self.state = find_crc
+                                self.state = State.FIND_CRC
 
-                    elif self.state == find_crc:
+                    elif self.state == State.FIND_CRC:
                         found_checksum = self.crc.calculate(
                             self.rx_buff, self.bytes_to_rec)
 
                         if found_checksum == rec_char:
-                            self.state = find_end_byte
+                            self.state = State.FIND_END_BYTE
                         else:
                             self.bytes_read = 0
-                            self.state = find_start_byte
+                            self.state = State.FIND_START_BYTE
                             self.status = Status.CRC_ERROR
                             return self.bytes_read
 
-                    elif self.state == find_end_byte:
-                        self.state = find_start_byte
+                    elif self.state == State.FIND_END_BYTE:
+                        self.state = State.FIND_START_BYTE
 
                         if rec_char == STOP_BYTE:
                             self.unpack_packet()
@@ -611,7 +612,7 @@ class SerialTransfer(object):
                         print('ERROR: Undefined state: {}'.format(self.state))
 
                         self.bytes_read = 0
-                        self.state = find_start_byte
+                        self.state = State.FIND_START_BYTE
                         return self.bytes_read
             else:
                 self.bytes_read = 0

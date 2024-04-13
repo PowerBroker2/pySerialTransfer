@@ -1,6 +1,7 @@
 import os
 import json
 import struct
+from enum import Enum
 from typing import Union
 
 import serial
@@ -17,12 +18,14 @@ class InvalidCallbackList(Exception):
     pass
 
 
-CONTINUE        = 3
-NEW_DATA        = 2
-NO_DATA         = 1
-CRC_ERROR       = 0
-PAYLOAD_ERROR   = -1
-STOP_BYTE_ERROR = -2
+class Status(Enum):
+    CONTINUE        = 3
+    NEW_DATA        = 2
+    NO_DATA         = 1
+    CRC_ERROR       = 0
+    PAYLOAD_ERROR   = -1
+    STOP_BYTE_ERROR = -2
+
 
 START_BYTE = 0x7E
 STOP_BYTE  = 0x81
@@ -559,7 +562,7 @@ class SerialTransfer(object):
                         else:
                             self.bytes_read = 0
                             self.state = find_start_byte
-                            self.status = PAYLOAD_ERROR
+                            self.status = Status.PAYLOAD_ERROR
                             return self.bytes_read
 
                     elif self.state == find_payload:
@@ -588,7 +591,7 @@ class SerialTransfer(object):
                         else:
                             self.bytes_read = 0
                             self.state = find_start_byte
-                            self.status = CRC_ERROR
+                            self.status = Status.CRC_ERROR
                             return self.bytes_read
 
                     elif self.state == find_end_byte:
@@ -597,11 +600,11 @@ class SerialTransfer(object):
                         if rec_char == STOP_BYTE:
                             self.unpack_packet()
                             self.bytes_read = self.bytes_to_rec
-                            self.status = NEW_DATA
+                            self.status = Status.NEW_DATA
                             return self.bytes_read
 
                         self.bytes_read = 0
-                        self.status = STOP_BYTE_ERROR
+                        self.status = Status.STOP_BYTE_ERROR
                         return self.bytes_read
 
                     else:
@@ -612,11 +615,11 @@ class SerialTransfer(object):
                         return self.bytes_read
             else:
                 self.bytes_read = 0
-                self.status = NO_DATA
+                self.status = Status.NO_DATA
                 return self.bytes_read
 
         self.bytes_read = 0
-        self.status = CONTINUE
+        self.status = Status.CONTINUE
         return self.bytes_read
     
     def tick(self):
@@ -639,12 +642,12 @@ class SerialTransfer(object):
             
             return True
         
-        elif self.debug and self.status in [CRC_ERROR, PAYLOAD_ERROR, STOP_BYTE_ERROR]:
-            if self.status == CRC_ERROR:
+        elif self.debug and self.status in [Status.CRC_ERROR, Status.PAYLOAD_ERROR, Status.STOP_BYTE_ERROR]:
+            if self.status == Status.CRC_ERROR:
                 err_str = 'CRC_ERROR'
-            elif self.status == PAYLOAD_ERROR:
+            elif self.status == Status.PAYLOAD_ERROR:
                 err_str = 'PAYLOAD_ERROR'
-            elif self.status == STOP_BYTE_ERROR:
+            elif self.status == Status.STOP_BYTE_ERROR:
                 err_str = 'STOP_BYTE_ERROR'
             else:
                 err_str = str(self.status)

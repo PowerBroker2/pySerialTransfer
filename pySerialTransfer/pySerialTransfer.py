@@ -130,7 +130,7 @@ def serial_ports():
     return [p.device for p in serial.tools.list_ports.comports(include_links=True)]
 
 
-class SerialTransfer(object):
+class SerialTransfer:
     def __init__(self, port, baud=115200, restrict_ports=True, debug=True, byte_format=BYTE_FORMATS['little-endian'], timeout=0.05, write_timeout=None):
         '''
         Description:

@@ -2,7 +2,7 @@ from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
 
 
-class struct(object):
+class struct:
     z = ''
     y = 0.0
 

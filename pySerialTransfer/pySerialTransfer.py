@@ -457,6 +457,7 @@ class SerialTransfer(object):
 
         :param message_len: int - number of bytes from the tx_buff to send as
                                   payload in the packet
+        :param packet_id:   int - ID of the packet to send                                  
 
         :return: bool - whether or not the operation was successful
         '''

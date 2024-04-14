@@ -419,33 +419,33 @@ def test_set_callbacks_with_non_iterable():
     assert st.callbacks == original_callbacks
     
     
-
-@patch('builtins.print')
 @pytest.mark.parametrize('incoming_byte_values, expected_print_str', [
     ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xFF, 0x81], 'CRC_ERROR'),
     ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x7E], 'STOP_BYTE_ERROR'),
     ([0x7E, 0, 0xFF, 0xFF, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81], 'PAYLOAD_ERROR'),
 ])
-def test_tick_with_invalid_data(mock_print, incoming_byte_values, expected_print_str):
+def test_tick_with_invalid_data(caplog, incoming_byte_values, expected_print_str):
     """Test that the tick method returns False when invalid data is received."""
     st = SerialTransfer('COM3')
     make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
     result = st.tick()
     assert result is False
-    mock_print.assert_called_once_with(f"ERROR: {expected_print_str}")
+    assert len(caplog.records) == 1
+    assert caplog.records[0].message == f"{expected_print_str}"
+    assert caplog.records[0].levelname == 'ERROR'
 
 
-@patch('builtins.print')
 @pytest.mark.parametrize('incoming_byte_values, expected_print_str', [
     ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xFF, 0x81], 'CRC_ERROR'),
     ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x7E], 'STOP_BYTE_ERROR'),
     ([0x7E, 0, 0xFF, 0xFF, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81], 'PAYLOAD_ERROR'),
 ])
-def test_tick_with_invalid_data_debug_false(mock_print, incoming_byte_values, expected_print_str):
+def test_tick_with_invalid_data_debug_false(caplog, incoming_byte_values, expected_print_str):
     """Test that the tick method does not print when presented with invalid data and debug is False."""
     st = SerialTransfer('COM3', debug=False)
     make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
     result = st.tick()
     assert result is False
-    mock_print.assert_not_called()
+    assert len(caplog.records) == 0
+
     

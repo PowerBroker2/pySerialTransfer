@@ -27,7 +27,7 @@ if __name__ == '__main__':
                     
                     print(nextContents, end='')
                     
-            elif link.status <= 0:
+            elif link.status.value <= 0:
                 if link.status == Status.CRC_ERROR:
                     print('ERROR: CRC_ERROR')
                 elif link.status == Status.PAYLOAD_ERROR:
@@ -35,7 +35,7 @@ if __name__ == '__main__':
                 elif link.status == Status.STOP_BYTE_ERROR:
                     print('ERROR: STOP_BYTE_ERROR')
                 else:
-                    print('ERROR: {}'.format(link.status))
+                    print('ERROR: {}'.format(link.status.name))
                 
     except KeyboardInterrupt:
         link.close()

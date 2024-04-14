@@ -55,15 +55,16 @@ if __name__ == '__main__':
             # Wait for a response and report any errors while receiving packets
             ###################################################################
             while not link.available():
-                if link.status < 0:
-                    if link.status == txfer.CRC_ERROR:
+                # A negative value for status indicates an error
+                if link.status.value < 0:
+                    if link.status == txfer.Status.CRC_ERROR:
                         print('ERROR: CRC_ERROR')
-                    elif link.status == txfer.PAYLOAD_ERROR:
+                    elif link.status == txfer.Status.PAYLOAD_ERROR:
                         print('ERROR: PAYLOAD_ERROR')
-                    elif link.status == txfer.STOP_BYTE_ERROR:
+                    elif link.status == txfer.Status.STOP_BYTE_ERROR:
                         print('ERROR: STOP_BYTE_ERROR')
                     else:
-                        print('ERROR: {}'.format(link.status))
+                        print('ERROR: {}'.format(link.status.name))
             
             ###################################################################
             # Parse response list

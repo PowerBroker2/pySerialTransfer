@@ -2,7 +2,7 @@ from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
 
 
-class struct(object):
+class Struct:
     z = ''
     y = 0.0
 
@@ -12,7 +12,7 @@ arr = ''
 
 if __name__ == '__main__':
     try:
-        testStruct = struct
+        testStruct = Struct
         link = txfer.SerialTransfer('COM11')
         
         link.open()

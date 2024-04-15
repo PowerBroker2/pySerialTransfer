@@ -1,7 +1,7 @@
 import sys
 
 
-class CRC(object):
+class CRC:
     def __init__(self, polynomial=0x9B, crc_len=8):
         self.poly      = polynomial & 0xFF
         self.crc_len   = crc_len

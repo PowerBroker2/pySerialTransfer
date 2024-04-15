@@ -1,6 +1,7 @@
 import os
 import json
 import struct
+from enum import Enum
 from typing import Union
 
 import serial
@@ -17,12 +18,14 @@ class InvalidCallbackList(Exception):
     pass
 
 
-CONTINUE        = 3
-NEW_DATA        = 2
-NO_DATA         = 1
-CRC_ERROR       = 0
-PAYLOAD_ERROR   = -1
-STOP_BYTE_ERROR = -2
+class Status(Enum):
+    CONTINUE        = 3
+    NEW_DATA        = 2
+    NO_DATA         = 1
+    CRC_ERROR       = 0
+    PAYLOAD_ERROR   = -1
+    STOP_BYTE_ERROR = -2
+
 
 START_BYTE = 0x7E
 STOP_BYTE  = 0x81
@@ -65,13 +68,14 @@ ARRAY_FORMAT_LENGTHS = {'b': 1,
                         'd': 8}
 
 
-find_start_byte    = 0
-find_id_byte       = 1
-find_overhead_byte = 2
-find_payload_len   = 3
-find_payload       = 4
-find_crc           = 5
-find_end_byte      = 6
+class State(Enum):
+    FIND_START_BYTE    = 0
+    FIND_ID_BYTE       = 1
+    FIND_OVERHEAD_BYTE = 2
+    FIND_PAYLOAD_LEN   = 3
+    FIND_PAYLOAD       = 4
+    FIND_CRC           = 5
+    FIND_END_BYTE      = 6
 
 
 def msb(val):
@@ -167,7 +171,7 @@ class SerialTransfer:
         self.callbacks    = []
         self.byte_format  = byte_format
 
-        self.state = find_start_byte
+        self.state = State.FIND_START_BYTE
         
         if restrict_ports:
             self.port_name = None
@@ -540,30 +544,30 @@ class SerialTransfer:
                     rec_char = int.from_bytes(self.connection.read(),
                                              byteorder='big')
 
-                    if self.state == find_start_byte:
+                    if self.state == State.FIND_START_BYTE:
                         if rec_char == START_BYTE:
-                            self.state = find_id_byte
+                            self.state = State.FIND_ID_BYTE
                     
-                    elif self.state == find_id_byte:
+                    elif self.state == State.FIND_ID_BYTE:
                         self.id_byte = rec_char
-                        self.state = find_overhead_byte
+                        self.state = State.FIND_OVERHEAD_BYTE
 
-                    elif self.state == find_overhead_byte:
+                    elif self.state == State.FIND_OVERHEAD_BYTE:
                         self.rec_overhead_byte = rec_char
-                        self.state = find_payload_len
+                        self.state = State.FIND_PAYLOAD_LEN
 
-                    elif self.state == find_payload_len:
+                    elif self.state == State.FIND_PAYLOAD_LEN:
                         if rec_char > 0 and rec_char <= MAX_PACKET_SIZE:
                             self.bytes_to_rec = rec_char
                             self.pay_index = 0
-                            self.state = find_payload
+                            self.state = State.FIND_PAYLOAD
                         else:
                             self.bytes_read = 0
-                            self.state = find_start_byte
-                            self.status = PAYLOAD_ERROR
+                            self.state = State.FIND_START_BYTE
+                            self.status = Status.PAYLOAD_ERROR
                             return self.bytes_read
 
-                    elif self.state == find_payload:
+                    elif self.state == State.FIND_PAYLOAD:
                         if self.pay_index < self.bytes_to_rec:
                             self.rx_buff[self.pay_index] = rec_char
                             self.pay_index += 1
@@ -578,46 +582,46 @@ class SerialTransfer:
                                 self.pay_index = next_index
 
                             if self.pay_index == self.bytes_to_rec:
-                                self.state = find_crc
+                                self.state = State.FIND_CRC
 
-                    elif self.state == find_crc:
+                    elif self.state == State.FIND_CRC:
                         found_checksum = self.crc.calculate(
                             self.rx_buff, self.bytes_to_rec)
 
                         if found_checksum == rec_char:
-                            self.state = find_end_byte
+                            self.state = State.FIND_END_BYTE
                         else:
                             self.bytes_read = 0
-                            self.state = find_start_byte
-                            self.status = CRC_ERROR
+                            self.state = State.FIND_START_BYTE
+                            self.status = Status.CRC_ERROR
                             return self.bytes_read
 
-                    elif self.state == find_end_byte:
-                        self.state = find_start_byte
+                    elif self.state == State.FIND_END_BYTE:
+                        self.state = State.FIND_START_BYTE
 
                         if rec_char == STOP_BYTE:
                             self.unpack_packet()
                             self.bytes_read = self.bytes_to_rec
-                            self.status = NEW_DATA
+                            self.status = Status.NEW_DATA
                             return self.bytes_read
 
                         self.bytes_read = 0
-                        self.status = STOP_BYTE_ERROR
+                        self.status = Status.STOP_BYTE_ERROR
                         return self.bytes_read
 
                     else:
                         print('ERROR: Undefined state: {}'.format(self.state))
 
                         self.bytes_read = 0
-                        self.state = find_start_byte
+                        self.state = State.FIND_START_BYTE
                         return self.bytes_read
             else:
                 self.bytes_read = 0
-                self.status = NO_DATA
+                self.status = Status.NO_DATA
                 return self.bytes_read
 
         self.bytes_read = 0
-        self.status = CONTINUE
+        self.status = Status.CONTINUE
         return self.bytes_read
     
     def tick(self):
@@ -640,12 +644,12 @@ class SerialTransfer:
             
             return True
         
-        elif self.debug and self.status in [CRC_ERROR, PAYLOAD_ERROR, STOP_BYTE_ERROR]:
-            if self.status == CRC_ERROR:
+        elif self.debug and self.status in [Status.CRC_ERROR, Status.PAYLOAD_ERROR, Status.STOP_BYTE_ERROR]:
+            if self.status == Status.CRC_ERROR:
                 err_str = 'CRC_ERROR'
-            elif self.status == PAYLOAD_ERROR:
+            elif self.status == Status.PAYLOAD_ERROR:
                 err_str = 'PAYLOAD_ERROR'
-            elif self.status == STOP_BYTE_ERROR:
+            elif self.status == Status.STOP_BYTE_ERROR:
                 err_str = 'STOP_BYTE_ERROR'
             else:
                 err_str = str(self.status)

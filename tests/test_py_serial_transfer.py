@@ -4,10 +4,13 @@ import pytest
 import serial
 
 from pySerialTransfer.pySerialTransfer import (
-    SerialTransfer,
+    InvalidCallbackList,
     InvalidSerialPort,
-    find_start_byte,
-    BYTE_FORMATS, START_BYTE, MAX_PACKET_SIZE, InvalidCallbackList,
+    SerialTransfer,
+    State,
+    BYTE_FORMATS, 
+    MAX_PACKET_SIZE, 
+    START_BYTE,
 )
 
 
@@ -51,7 +54,7 @@ def test_init_defaults():
     assert st.connection.baudrate == 115200
     assert st.connection.timeout == 0.05
     assert st.connection.write_timeout is None
-    assert st.state == find_start_byte
+    assert st.state == State.FIND_START_BYTE
 
 
 def test_raises_exception_on_invalid_port():

@@ -1,5 +1,6 @@
 from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
+from pySerialTransfer.pySerialTransfer import Status
 
 
 class Struct:
@@ -35,15 +36,15 @@ if __name__ == '__main__':
                 
                 print('{}{} | {}'.format(testStruct.z, testStruct.y, arr))
                 
-            elif link.status <= 0:
-                if link.status == txfer.CRC_ERROR:
+            elif link.status.value <= 0:
+                if link.status == Status.CRC_ERROR:
                     print('ERROR: CRC_ERROR')
-                elif link.status == txfer.PAYLOAD_ERROR:
+                elif link.status == Status.PAYLOAD_ERROR:
                     print('ERROR: PAYLOAD_ERROR')
-                elif link.status == txfer.STOP_BYTE_ERROR:
+                elif link.status == Status.STOP_BYTE_ERROR:
                     print('ERROR: STOP_BYTE_ERROR')
                 else:
-                    print('ERROR: {}'.format(link.status))
+                    print('ERROR: {}'.format(link.status.name))
                 
         
     except KeyboardInterrupt:

@@ -78,14 +78,6 @@ class State(Enum):
     FIND_END_BYTE      = 6
 
 
-def msb(val):
-    return byte_val(val, calc_num_bytes(val) - 1)
-
-
-def lsb(val):
-    return byte_val(val, 0)
-
-
 def byte_val(val, pos):
     return int.from_bytes(((val >> (pos * 8)) & 0xFF).to_bytes(2, 'big'), 'big')
 
@@ -109,27 +101,6 @@ def constrain(val, min_, max_):
     elif val > max_:
         return max_
     return val
-
-
-def open_ports():
-    '''
-    Description:
-    ------------
-    Lists serial port names
-
-    :return port_list: list - all serial ports currently available
-    '''
-    port_list = []
-
-    for port in serial_ports():
-        try:
-            s = serial.Serial(port)
-            s.close()
-            port_list.append(port)
-        except (OSError, serial.SerialException):
-            pass
-
-    return port_list
 
 
 def serial_ports():

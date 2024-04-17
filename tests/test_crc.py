@@ -24,7 +24,7 @@ def test_crc_poly():
 
 #  Note: The CRC class has no upper limit on the crc_len parameter, but attempting to use a value greater than 32 hangs
 #  the test. The CRC class should be updated to handle this case.
-@pytest.mark.parametrize('crc_len', [4, 8, 16])    
+@pytest.mark.parametrize('crc_len', [4, 8, 16, 32, 128, 256])    
 def test_custom_positive_crc_len(crc_len):
     """Test the initialization of the CRC class with a custom crc length."""
     expected_table_len = pow(2, crc_len)

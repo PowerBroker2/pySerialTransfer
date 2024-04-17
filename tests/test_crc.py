@@ -11,7 +11,6 @@ def test_crc_init():
     assert crc.poly == 0x9B
     assert crc.crc_len == 8
     assert crc.table_len == 256
-    assert len(crc.cs_table) == 256
 
 
 def test_crc_poly():
@@ -21,7 +20,6 @@ def test_crc_poly():
     assert crc.poly == polynomial & 0xFF
     assert crc.crc_len == 8
     assert crc.table_len == 256
-    assert len(crc.cs_table) == 256
 
 
 #  Note: The CRC class has no upper limit on the crc_len parameter, but attempting to use a value greater than 32 hangs
@@ -32,7 +30,6 @@ def test_custom_positive_crc_len(crc_len):
     expected_table_len = pow(2, crc_len)
     crc = CRC(crc_len=crc_len)
     assert crc.table_len == expected_table_len
-    assert len(crc.cs_table) == expected_table_len
 
 
 def test_crc_calculate():

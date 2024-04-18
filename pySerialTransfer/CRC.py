@@ -1,4 +1,5 @@
 import sys
+from functools import lru_cache
 
 
 class CRC:
@@ -6,25 +7,25 @@ class CRC:
         self.poly      = polynomial & 0xFF
         self.crc_len   = crc_len
         self.table_len = pow(2, crc_len)
-        self.cs_table  = [' '] * self.table_len
         
-        self.generate_table()
-    
-    def generate_table(self):
-        for i in range(len(self.cs_table)):
-            curr = i
-            
-            for j in range(8):
-                if (curr & 0x80) != 0:
-                    curr = ((curr << 1) & 0xFF) ^ self.poly
-                else:
-                    curr <<= 1
-            
-            self.cs_table[i] = curr
+    @lru_cache(2 ^ 16)
+    def calculate_checksum(self, index: int):
+        """Calculate the checksum for a given index.
+        An LRU cached version of the CRC calculation function, with an upper bound on the cache size of 2^16
+        """
+        if index > self.table_len:
+            raise ValueError('Index out of range')
+        curr = index
+        for j in range(8):
+            if (curr & 0x80) != 0:
+                curr = ((curr << 1) & 0xFF) ^ self.poly
+            else:
+                curr <<= 1
+        return curr
     
     def print_table(self):
-        for i in range(len(self.cs_table)):
-            sys.stdout.write(hex(self.cs_table[i]).upper().replace('X', 'x'))
+        for i in range(self.table_len):
+            sys.stdout.write(hex(self.calculate_checksum(i)).upper().replace('X', 'x'))
             
             if (i + 1) % 16:
                 sys.stdout.write(' ')
@@ -46,10 +47,10 @@ class CRC:
                 except ValueError:
                     nex_el = ord(arr[i])
                 
-                crc = self.cs_table[crc ^ nex_el]
+                crc = self.calculate_checksum(crc ^ nex_el)
                 
         except TypeError:
-            crc = self.cs_table[arr]
+            crc = self.calculate_checksum(arr)
             
         return crc
 

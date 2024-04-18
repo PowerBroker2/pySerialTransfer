@@ -78,23 +78,6 @@ class State(Enum):
     FIND_END_BYTE      = 6
 
 
-def byte_val(val, pos):
-    return int.from_bytes(((val >> (pos * 8)) & 0xFF).to_bytes(2, 'big'), 'big')
-
-
-def calc_num_bytes(val):
-    num_bits = val.bit_length()
-    num_bytes = num_bits // 8
-
-    if num_bits % 8:
-        num_bytes += 1
-    
-    if not num_bytes:
-        num_bytes = 1
-
-    return num_bytes
-
-
 def constrain(val, min_, max_):
     if val < min_:
         return min_

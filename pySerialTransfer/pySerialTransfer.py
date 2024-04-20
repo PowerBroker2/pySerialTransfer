@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import struct
@@ -162,7 +163,7 @@ class SerialTransfer:
                 self.connection.open()
                 return True
             except serial.SerialException as e:
-                print(e)
+                logging.exception(e)
                 return False
         return True
     
@@ -564,7 +565,7 @@ class SerialTransfer:
                         return self.bytes_read
 
                     else:
-                        print('ERROR: Undefined state: {}'.format(self.state))
+                        logging.error('Undefined state: {}'.format(self.state))
 
                         self.bytes_read = 0
                         self.state = State.FIND_START_BYTE
@@ -594,7 +595,7 @@ class SerialTransfer:
             if self.id_byte < len(self.callbacks):
                 self.callbacks[self.id_byte]()
             elif self.debug:
-                print('ERROR: No callback available for packet ID {}'.format(self.id_byte))
+                logging.error('No callback available for packet ID {}'.format(self.id_byte))
             
             return True
         
@@ -608,6 +609,6 @@ class SerialTransfer:
             else:
                 err_str = str(self.status)
                 
-            print('ERROR: {}'.format(err_str))
+            logging.error('{}'.format(err_str))
         
         return False

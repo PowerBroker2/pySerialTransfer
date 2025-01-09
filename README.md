@@ -56,7 +56,7 @@ if __name__ == '__main__':
             ###################################################################
             while not link.available():
                 # A negative value for status indicates an error
-                if link.status.value < 0:
+                if link.status < 0:
                     if link.status == txfer.Status.CRC_ERROR:
                         print('ERROR: CRC_ERROR')
                     elif link.status == txfer.Status.PAYLOAD_ERROR:

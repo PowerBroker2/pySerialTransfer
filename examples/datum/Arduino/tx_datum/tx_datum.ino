@@ -3,7 +3,7 @@
 
 SerialTransfer myTransfer;
 
-double y;
+float y;
 
 
 void setup()

@@ -5,7 +5,7 @@ SerialTransfer myTransfer;
 
 struct __attribute__((packed)) STRUCT {
   char z;
-  double y;
+  float y;
 } testStruct;
 
 char arr[] = "hello";

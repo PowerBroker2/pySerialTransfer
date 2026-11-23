@@ -3,7 +3,7 @@
 
 SerialTransfer myTransfer;
 
-double y;
+float y;
 
 
 void setup()
@@ -15,7 +15,7 @@ void setup()
 
 void loop()
 {
-  if(myTransfer.available())
+  if (myTransfer.available() == sizeof(y) && myTransfer.currentPacketID() == 0)
   {
     myTransfer.rxObj(y);
   }

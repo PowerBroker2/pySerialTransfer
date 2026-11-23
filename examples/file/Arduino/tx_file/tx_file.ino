@@ -1,43 +1,74 @@
 #include "SerialTransfer.h"
 
+// Use Serial for USB, or change to Serial1 for a USB-to-UART adapter.
+#define FILE_PORT Serial
+const char fileName[] = "sample.bin";
+const uint16_t fileSize = 512;
+SerialTransfer transfer;
 
-SerialTransfer myTransfer;
+// A generated binary file spans multiple packets without using 512 bytes of RAM.
+uint8_t fileByte(uint16_t offset)
+{
+  return uint8_t(offset);
+}
 
-const int fileSize = 2000;
-char file[fileSize] = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt tempus. Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit amet orci eget eros faucibus tincidunt. Duis leo. Sed fringilla mauris sit amet nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales, augue velit cursus nunc, quis gravida magna mi a libero. Fusce vulputate eleifend sapien. Vestibulum purus quam, scelerisque ut, mollis sed, nonummy id, metus. Nullam accumsan lorem in dui. Cras ultricies mi eu turpis hendrerit fringilla. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; In ac dui quis mi consectetuer lacinia. Nam pretium turpis et arcu. Duis arcu tortor, suscipit eget, imperdiet nec, imperdiet iaculis, ipsum. Sed aliquam ultrices mauris. Integer ante arcu, accumsan a, consectetuer eget, posuere ut, mauris. Praesent adipiscing. Phasellus ullamcorper ipsum rutrum nunc. Nunc nonummy metus. Vestib";
-char fileName[8] = "test.txt";
+void put16(uint8_t* p, uint16_t value)
+{
+  p[0] = uint8_t(value);
+  p[1] = uint8_t(value >> 8);
+}
 
+void putMetadata(uint32_t hash)
+{
+  uint8_t* p = transfer.packet.txBuff;
+  put16(p, fileSize);
+  put16(p + 2, uint16_t(hash));
+  put16(p + 4, uint16_t(hash >> 16));
+}
+
+bool sendFile()
+{
+  uint32_t hash = 2166136261UL;
+  for (uint16_t i = 0; i < fileSize; ++i)
+    hash = (hash ^ fileByte(i)) * 16777619UL;
+
+  putMetadata(hash);
+  memcpy(transfer.packet.txBuff + 6, fileName, sizeof(fileName) - 1);
+  transfer.sendData(6 + sizeof(fileName) - 1, 0);
+  if (transfer.transmissionStatus)
+    return false;
+  for (uint16_t offset = 0; offset < fileSize;)
+  {
+    const uint16_t remaining = fileSize - offset;
+    const uint16_t count = remaining < MAX_PACKET_SIZE - 2 ? remaining : MAX_PACKET_SIZE - 2;
+    put16(transfer.packet.txBuff, offset);
+    for (uint16_t i = 0; i < count; ++i)
+      transfer.packet.txBuff[2 + i] = fileByte(offset + i);
+    transfer.sendData(2 + count, 1);
+    if (transfer.transmissionStatus)
+      return false;
+    offset += count;
+    delay(100);
+  }
+  putMetadata(hash);
+  transfer.sendData(6, 2);
+  return transfer.transmissionStatus == 0;
+}
 
 void setup()
 {
-  Serial.begin(115200);
-  
-  myTransfer.begin(Serial);
+#ifdef LED_BUILTIN
+  pinMode(LED_BUILTIN, OUTPUT);
+#endif
+  FILE_PORT.begin(115200);
+  transfer.begin(FILE_PORT, false);
 }
-
 
 void loop()
 {
-  myTransfer.sendDatum(fileName); // Send filename
-  
-  uint16_t numPackets = fileSize / (MAX_PACKET_SIZE - 2); // Reserve two bytes for current file index
-  
-  if (fileSize % MAX_PACKET_SIZE) // Add an extra transmission if needed
-    numPackets++;
-  
-  for (uint16_t i=0; i<numPackets; i++) // Send all data within the file across multiple packets
-  {
-    uint16_t fileIndex = i * MAX_PACKET_SIZE; // Determine the current file index
-    uint8_t dataLen = MAX_PACKET_SIZE - 2;
-
-    if ((fileIndex + (MAX_PACKET_SIZE - 2)) > fileSize) // Determine data length for the last packet if file length is not an exact multiple of MAX_PACKET_SIZE-2
-      dataLen = fileSize - fileIndex;
-    
-    uint8_t sendSize = myTransfer.txObj(fileIndex); // Stuff the current file index
-    sendSize = myTransfer.txObj(file[fileIndex], sendSize, dataLen); // Stuff the current file data
-    
-    myTransfer.sendData(sendSize, 1); // Send the current file index and data
-    delay(1000);
-  }
-  delay(10000);
+  const bool sent = sendFile();
+#ifdef LED_BUILTIN
+  digitalWrite(LED_BUILTIN, sent ? HIGH : LOW);
+#endif
+  delay(sent ? 10000 : 120);
 }

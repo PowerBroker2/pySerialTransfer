@@ -1,0 +1,2 @@
+recursive-include examples *.py *.ino
+include tools/release.py create_live_pypi.bat create_test_pypi.bat update_live_pypi.bat

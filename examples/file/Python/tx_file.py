@@ -1,45 +1,61 @@
-from time import sleep
+"""Send a file to the SerialTransfer.h UART file receiver example."""
+
+import argparse
+import math
+from pathlib import Path
+import sys
+import time
+
+from file_transfer import FILE_BUFFER_SIZE, iter_file_chunks, make_file_header, make_file_trailer
 from pySerialTransfer import pySerialTransfer as txfer
 
 
-file = 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt tempus. Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit amet orci eget eros faucibus tincidunt. Duis leo. Sed fringilla mauris sit amet nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales, augue velit cursus nunc, quis gravida magna mi a libero. Fusce vulputate eleifend sapien. Vestibulum purus quam, scelerisque ut, mollis sed, nonummy id, metus. Nullam accumsan lorem in dui. Cras ultricies mi eu turpis hendrerit fringilla. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; In ac dui quis mi consectetuer lacinia. Nam pretium turpis et arcu. Duis arcu tortor, suscipit eget, imperdiet nec, imperdiet iaculis, ipsum. Sed aliquam ultrices mauris. Integer ante arcu, accumsan a, consectetuer eget, posuere ut, mauris. Praesent adipiscing. Phasellus ullamcorper ipsum rutrum nunc. Nunc nonummy metus. Vestib'
-fileSize = len(file)
-fileName = 'test.txt'
+def send_payload(link, payload, packet_id):
+    link.tx_buff[:len(payload)] = payload
+    if not link.send(len(payload), packet_id=packet_id):
+        raise RuntimeError("serial write did not send the complete packet")
 
 
-if __name__ == '__main__':
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Transfer one file to the SerialTransfer.h UART file receiver example."
+    )
+    parser.add_argument("file", type=Path, help="file to send (maximum 4096 bytes)")
+    parser.add_argument("--port", required=True, help="serial port, such as COM11 or /dev/ttyUSB0")
+    parser.add_argument("--baud", type=int, default=115200, help="UART baud rate (default: 115200)")
+    parser.add_argument("--startup-delay", type=float, default=2.0,
+                        help="seconds after opening the port for the board to reset (default: 2)")
+    args = parser.parse_args(argv)
+    if not math.isfinite(args.startup_delay) or args.startup_delay < 0:
+        parser.error("--startup-delay must be finite and non-negative")
+
+    link = None
     try:
-        link = txfer.SerialTransfer('COM11')
-        
-        link.open()
-        sleep(5)
-    
-        while True:
-            link.send(link.tx_obj(fileName))
-            
-            numPackets = int(fileSize / (txfer.MAX_PACKET_SIZE - 2))
-            
-            if numPackets % txfer.MAX_PACKET_SIZE:
-                numPackets += 1
-            
-            
-            
-            for i in range(numPackets):
-                fileIndex = i * txfer.MAX_PACKET_SIZE
-                dataLen = txfer.MAX_PACKET_SIZE - 2
-                
-                if (fileIndex + (txfer.MAX_PACKET_SIZE - 2)) > fileSize:
-                    dataLen = fileSize - fileIndex
-                
-                dataStr = file[fileIndex:fileIndex+dataLen]
-                
-                sendSize = link.tx_obj(fileIndex, val_type_override='h')
-                sendSize = link.tx_obj(dataStr, start_pos=sendSize)
-                link.send(sendSize)
-                
-                sleep(1)
-            
-            sleep(10)
-                
-    except KeyboardInterrupt:
-        link.close()
+        with args.file.open("rb") as source:
+            data = source.read(FILE_BUFFER_SIZE + 1)
+        name = args.file.name
+        header = make_file_header(name, data)
+        trailer = make_file_trailer(data)
+        link = txfer.SerialTransfer(args.port, baud=args.baud, restrict_ports=False)
+        if not link.open():
+            raise RuntimeError("could not open serial port {!r}".format(args.port))
+        time.sleep(args.startup_delay)
+        send_payload(link, header, 0)
+        time.sleep(0.1)
+        for chunk in iter_file_chunks(data):
+            send_payload(link, chunk, 1)
+            # Give small MCU UART receive buffers time to drain between frames.
+            time.sleep(0.1)
+        send_payload(link, trailer, 2)
+        print("Sent {!r} ({} bytes). The Arduino receiver validates its checksum.".format(name, len(data)))
+        return 0
+    except (OSError, ValueError, RuntimeError) as exc:
+        print("Error: {}".format(exc), file=sys.stderr)
+        return 1
+    finally:
+        if link is not None:
+            link.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -22,14 +22,11 @@ def test_crc_poly():
     assert crc.table_len == 256
 
 
-#  Note: The CRC class has no upper limit on the crc_len parameter, but attempting to use a value greater than 32 hangs
-#  the test. The CRC class should be updated to handle this case.
-@pytest.mark.parametrize('crc_len', [4, 8, 16, 32, 128, 256])    
-def test_custom_positive_crc_len(crc_len):
-    """Test the initialization of the CRC class with a custom crc length."""
-    expected_table_len = pow(2, crc_len)
+@pytest.mark.parametrize('crc_len', [0, 4, 8, 16, 32, 128, 256])
+def test_crc_width_always_matches_serialtransfer_crc8(crc_len):
     crc = CRC(crc_len=crc_len)
-    assert crc.table_len == expected_table_len
+    assert crc.crc_len == 8
+    assert crc.table_len == 256
 
 
 def test_crc_calculate():
@@ -98,8 +95,6 @@ def test_calculate_with_non_int_with_dist():
     assert result == expected_output
 
 
-# TODO: Handle this case in the calculate method   
-@pytest.mark.xfail(reason="not currently handled in the calculate method")   
 def test_calculate_with_dist_greater_than_list_length():
     crc_instance = CRC()
     arr = [0x31, 0x32, 0x33, 0x34, 0x35]
@@ -157,8 +152,6 @@ def test_calculate_with_empty_list():
     assert result == 0
 
 
-# TODO: Handle this case in the calculate method   
-@pytest.mark.xfail(reason="not currently handled in the calculate method") 
 def test_calculate_with_negative_dist():
     """Test that the calculate method raises a ValueError when the dist parameter is negative."""
     crc_instance = CRC()
@@ -182,3 +175,19 @@ def test_calculate_with_list_of_mixed_types():
     arr = [0x31, "a", 0x33, "b", 0x35]
     result = crc_instance.calculate(arr)
     assert result == 254
+
+
+
+def test_calculate_with_zero_dist_returns_zero():
+    assert CRC().calculate([0x31, 0x32], 0) == 0
+
+
+def test_calculate_rejects_values_outside_byte_range():
+    with pytest.raises(ValueError):
+        CRC().calculate([256])
+
+
+@pytest.mark.parametrize('index', [-1, 256])
+def test_calculate_checksum_rejects_invalid_index(index):
+    with pytest.raises(ValueError):
+        CRC().calculate_checksum(index)

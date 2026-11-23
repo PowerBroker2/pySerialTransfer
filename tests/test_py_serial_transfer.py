@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import patch, MagicMock, PropertyMock
 
 import pytest
@@ -8,6 +10,7 @@ from pySerialTransfer.pySerialTransfer import (
     InvalidSerialPort,
     SerialTransfer,
     State,
+    Status,
     BYTE_FORMATS, 
     MAX_PACKET_SIZE, 
     START_BYTE,
@@ -33,8 +36,9 @@ def make_incoming_byte_stream(incoming_byte_values: list[int], connection: Magic
     set the read side effect of the connection mock to return the list of bytes objects. 
     Return the list of bytes objects."""
     incoming_bytes = [bytes([b]) for b in incoming_byte_values]
-    type(connection).in_waiting = PropertyMock(side_effect=[True] * len(incoming_bytes) + [False])
-    connection.read.side_effect = incoming_bytes
+    stream = bytes(incoming_byte_values)
+    type(connection).in_waiting = PropertyMock(side_effect=[len(stream), 0])
+    connection.read.side_effect = [stream] if stream else []
     return incoming_bytes
         
         
@@ -123,87 +127,26 @@ def test_close_closes_connection(mock_serial):
     assert st.connection.close.call_count == 1
 
 
-@pytest.mark.parametrize('tx_buff, payload_length, expected_overhead_byte', [
-    ([START_BYTE, 0x01, 0x02, 0x03, 0x04], 5, 0x00),  # found in 1st byte
-    ([0x01, START_BYTE, 0x03, 0x04, 0x05], 5, 0x01),  # found in 2nd byte
-    ([0x02, 0x03, START_BYTE, 0x05, 0x06], 5, 0x02),  # found in 3rd byte
-    ([0x03, 0x04, 0x05, START_BYTE, 0x07], 5, 0x03),  # found in 4th byte
-    ([0x04, 0x05, 0x06, 0x07, START_BYTE], 5, 0x04),  # found in 5th byte
-    ([0x05, 0x06, 0x07, 0x08, 0x09], 5, 0xFF),  # not found in payload
-    ([0x06, 0x07, 0x08, 0x09, START_BYTE], 4, 0xFF),  # not present within the payload length
-])
-def test_calc_overhead_basic(tx_buff, payload_length, expected_overhead_byte):
-    """Test that the calc_overhead method sets the overhead property to the byte position in the payload of the first 
-    payload byte equal to the START_BYTE value"""
+def test_legacy_stuffing_helpers_are_noops():
     st = SerialTransfer('COM3')
-    st.tx_buff = tx_buff
-    st.calc_overhead(payload_length)
-    
-    assert st.overhead_byte == expected_overhead_byte
+    payload = bytearray([START_BYTE, 1, START_BYTE])
+    st.tx_buff = payload[:]
+    st.calc_overhead(len(payload))
+    assert st.overhead_byte == 0xFF
+    assert st.find_last(len(payload)) == -1
+    st.stuff_packet(len(payload))
+    assert st.tx_buff == payload
 
 
-@pytest.mark.parametrize('tx_buff, payload_length, expected_position', [
-    ([START_BYTE, START_BYTE, START_BYTE, START_BYTE, START_BYTE], 5, 4),  # all bytes are START_BYTE, last byte pos is payload length -1 
-    ([START_BYTE, START_BYTE, START_BYTE, 0x01, 0x01], 5, 2),  # first 3 bytes are START_BYTE, last byte pos is 2
-    ([START_BYTE, START_BYTE, START_BYTE, 0x01, START_BYTE], 4, 2),  # trailing START_BYTE is ignored as it is not part of the payload
-    ([START_BYTE, START_BYTE, START_BYTE, START_BYTE, START_BYTE], MAX_PACKET_SIZE + 1, -1),  # special case: payload length exceeds MAX_PACKET_SIZE, return -1
-    
-])
-def test_find_last(tx_buff, payload_length, expected_position):
-    """Test that the find_last method returns the index of the last occurrence of the START_BYTE value in the tx_buff"""
+def test_unpack_packet_is_compatibility_noop():
     st = SerialTransfer('COM3')
-    st.tx_buff = tx_buff
-    result = st.find_last(payload_length)
-    
-    assert result == expected_position
-    
-
-def test_stuff_packet():
-    # Create an instance of SerialTransfer
-    st = SerialTransfer('COM3')
-
-    # Set up a specific tx_buff
-    st.tx_buff = [START_BYTE if i % 2 == 0 else i for i in range(MAX_PACKET_SIZE)]
-
-    # Call stuff_packet with a specific payload length
-    st.stuff_packet(MAX_PACKET_SIZE)
-
-    # Assert that tx_buff has been modified as expected
-    expected_tx_buff = [2, 1, 2, 3, 2, 5, 2, 7, 2, 9, 2, 11, 2, 13, 2, 15, 2, 17, 2, 19, 2, 21, 2, 23, 2, 25, 2, 27, 2, 29, 2, 31, 2, 33, 2, 35, 2, 37, 2, 39, 2, 41, 2, 43, 2, 45, 2, 47, 2, 49, 2, 51, 2, 53, 2, 55, 2, 57, 2, 59, 2, 61, 2, 63, 2, 65, 2, 67, 2, 69, 2, 71, 2, 73, 2, 75, 2, 77, 2, 79, 2, 81, 2, 83, 2, 85, 2, 87, 2, 89, 2, 91, 2, 93, 2, 95, 2, 97, 2, 99, 2, 101, 2, 103, 2, 105, 2, 107, 2, 109, 2, 111, 2, 113, 2, 115, 2, 117, 2, 119, 2, 121, 2, 123, 2, 125, 2, 127, 2, 129, 2, 131, 2, 133, 2, 135, 2, 137, 2, 139, 2, 141, 2, 143, 2, 145, 2, 147, 2, 149, 2, 151, 2, 153, 2, 155, 2, 157, 2, 159, 2, 161, 2, 163, 2, 165, 2, 167, 2, 169, 2, 171, 2, 173, 2, 175, 2, 177, 2, 179, 2, 181, 2, 183, 2, 185, 2, 187, 2, 189, 2, 191, 2, 193, 2, 195, 2, 197, 2, 199, 2, 201, 2, 203, 2, 205, 2, 207, 2, 209, 2, 211, 2, 213, 2, 215, 2, 217, 2, 219, 2, 221, 2, 223, 2, 225, 2, 227, 2, 229, 2, 231, 2, 233, 2, 235, 2, 237, 2, 239, 2, 241, 2, 243, 2, 245, 2, 247, 2, 249, 2, 251, 0, 253]
-    assert st.tx_buff == expected_tx_buff
-
-
-def test_stuff_packet_pay_length_exceeds_max_packet_size():
-    """Test that the stuff_packet method does not modify the tx_buff when the payload length exceeds MAX_PACKET_SIZE"""
-    # Create an instance of SerialTransfer
-    st = SerialTransfer('COM3')
-
-    # Set up a specific tx_buff
-    start_tx_buff = [START_BYTE if i % 2 == 0 else i for i in range(MAX_PACKET_SIZE)]
-    st.tx_buff = start_tx_buff.copy()
-
-    # Call stuff_packet with a payload length that exceeds MAX_PACKET_SIZE
-    st.stuff_packet(MAX_PACKET_SIZE + 1)
-
-    # Assert that tx_buff has been modified as expected
-    assert st.tx_buff == start_tx_buff
-
-
-def test_unpack_packet():
-    # Create an instance of SerialTransfer
-    st = SerialTransfer('COM3')
-
-    # Set up a specific rx_buff
-    st.rx_buff = [2, 1, 2, 3, 2, 5, 2, 7, 2, 9, 2, 11, 2, 13, 2, 15, 2, 17, 2, 19, 2, 21, 2, 23, 2, 25, 2, 27, 2, 29, 2, 31, 2, 33, 2, 35, 2, 37, 2, 39, 2, 41, 2, 43, 2, 45, 2, 47, 2, 49, 2, 51, 2, 53, 2, 55, 2, 57, 2, 59, 2, 61, 2, 63, 2, 65, 2, 67, 2, 69, 2, 71, 2, 73, 2, 75, 2, 77, 2, 79, 2, 81, 2, 83, 2, 85, 2, 87, 2, 89, 2, 91, 2, 93, 2, 95, 2, 97, 2, 99, 2, 101, 2, 103, 2, 105, 2, 107, 2, 109, 2, 111, 2, 113, 2, 115, 2, 117, 2, 119, 2, 121, 2, 123, 2, 125, 2, 127, 2, 129, 2, 131, 2, 133, 2, 135, 2, 137, 2, 139, 2, 141, 2, 143, 2, 145, 2, 147, 2, 149, 2, 151, 2, 153, 2, 155, 2, 157, 2, 159, 2, 161, 2, 163, 2, 165, 2, 167, 2, 169, 2, 171, 2, 173, 2, 175, 2, 177, 2, 179, 2, 181, 2, 183, 2, 185, 2, 187, 2, 189, 2, 191, 2, 193, 2, 195, 2, 197, 2, 199, 2, 201, 2, 203, 2, 205, 2, 207, 2, 209, 2, 211, 2, 213, 2, 215, 2, 217, 2, 219, 2, 221, 2, 223, 2, 225, 2, 227, 2, 229, 2, 231, 2, 233, 2, 235, 2, 237, 2, 239, 2, 241, 2, 243, 2, 245, 2, 247, 2, 249, 2, 251, 0, 253]
-    
-    # Call unpack_packet
+    st.rx_buff = bytearray([0x7E, 0, 0x81])
+    st.bytes_read = 3
+    before = st.rx_buff[:]
     st.unpack_packet()
-    
-    # Assert that rx_payload has been modified as expected
-    expected_rx_payload = st.tx_buff = [START_BYTE if i % 2 == 0 else i for i in range(MAX_PACKET_SIZE)]
-    assert st.rx_buff == expected_rx_payload
+    assert st.rx_buff == before
 
-    
+
 def test_set_callbacks():
     """Test that the set_callbacks method sets the callback property to the passed callbacks"""
     # Create an instance of SerialTransfer
@@ -260,12 +203,7 @@ def test_set_callbacks_raises_on_non_callable_callbacks():
     (['a', 'b', 'c'], 0, '', '', 3),
     ("test", 0, '>', '', 4),
     (123, 0, '', 'h', 2),
-    pytest.param(
-        '11', 0, '', 'c', 1, 
-        marks=pytest.mark.xfail(
-            reason="tx_obj does not handle gracefully handle exceptions when 'c' type is manually declared"
-        )
-    ),
+    ('A', 0, '', 'c', 1),
 ])
 def test_tx_obj_known_types(val, start_pos, byte_format, val_type_override, expected):
     """Test that the tx_obj method returns the expected number of bytes for known types"""
@@ -300,6 +238,7 @@ def test_rx_obj_known_types(rx_bytes, obj_type, start_pos, byte_format, expected
     """Test that the rx_obj method returns the expected value for known types"""
     st = SerialTransfer('COM3')
     st.rx_buff = rx_bytes + [' '] * (MAX_PACKET_SIZE - len(rx_bytes))  # First set the rx_buff
+    st.bytes_read = len(rx_bytes)
     result = st.rx_obj(obj_type, start_pos=start_pos, obj_byte_size=len(rx_bytes), byte_format=byte_format)  # Then receive it
     if isinstance(result, float):
         assert pytest.approx(result, 0.01) == expected
@@ -319,18 +258,17 @@ def test_send():
     st = SerialTransfer('COM3')
 
     # Mock the write method of the serial object
-    st.connection.write = MagicMock()
+    st.connection.write = MagicMock(side_effect=len)
 
     # Define the message to be sent
     message = [1, 2, 3, 4, 5]
     message_len = len(message)
-    message_crc = 0x80
 
     # Add the message to the tx_buff
     st.tx_buff[:message_len] = message
 
     # Call the send method
-    st.send(message_len)
+    assert st.send(message_len)
 
     # Check that the write method was called with the correct argument
     st.connection.write.assert_called_once()
@@ -339,7 +277,7 @@ def test_send():
     actual_value = st.connection.write.call_args[0][0]
 
     # The expected value is the message wrapped in a bytearray, with additional bytes for the packet structure
-    expected_value = bytearray([0x7E, 0, 0xFF, message_len] + message + [message_crc, 0x81])
+    expected_value = bytearray([0x7E, 0, message_len] + message + [0xBF])
 
     # Assert that the actual value matches the expected value
     assert actual_value == expected_value
@@ -354,29 +292,30 @@ def test_available_with_no_data():
 
 def test_available_with_new_data():
     st = SerialTransfer('COM3')
-    incoming_byte_values = [0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81]
+    incoming_byte_values = [0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6A]
     make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
     assert st.available() == 4
 
 
 def test_available_with_crc_error():
     st = SerialTransfer('COM3')
-    incoming_byte_values = [0x7E, 0x00, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0x81, 0x81]
+    incoming_byte_values = [0x7E, 0x00, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6B]
     make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
     assert st.available() == 0
 
 
-def test_available_with_stop_byte_error():
+def test_available_does_not_require_stop_byte():
     st = SerialTransfer('COM3')
-    incoming_byte_values = [0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0x80, 0x7E]
-    make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
-    assert st.available() == 0
-    
+    incoming_byte_values = [0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6A]
+    make_incoming_byte_stream(incoming_byte_values, st.connection)
+    assert st.available() == 4
+    assert st.status == Status.NEW_DATA
+
 
 def test_tick_with_valid_data():
     """Test that the tick method returns True when valid data is received."""
     st = SerialTransfer('COM3')
-    incoming_byte_values = [0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81]
+    incoming_byte_values = [0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6A]
     make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
     result = st.tick()
     assert result is True
@@ -387,7 +326,7 @@ def test_tick_with_valid_data_and_callback():
     callback = MagicMock()
     st = SerialTransfer('COM3')
     st.set_callbacks([callback])
-    incoming_byte_values = [0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81]
+    incoming_byte_values = [0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6A]
     make_incoming_byte_stream(incoming_byte_values=incoming_byte_values, connection=st.connection)
     result = st.tick()
     assert result is True
@@ -420,9 +359,9 @@ def test_set_callbacks_with_non_iterable():
     
     
 @pytest.mark.parametrize('incoming_byte_values, expected_print_str', [
-    ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xFF, 0x81], 'CRC_ERROR'),
-    ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x7E], 'STOP_BYTE_ERROR'),
-    ([0x7E, 0, 0xFF, 0xFF, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81], 'PAYLOAD_ERROR'),
+    ([0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6B], 'CRC_ERROR'),
+    ([0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6B], 'CRC_ERROR'),
+    ([0x7E, 0, 0x00, 0x01], 'CRC_ERROR'),
 ])
 def test_tick_with_invalid_data(caplog, incoming_byte_values, expected_print_str):
     """Test that the tick method returns False when invalid data is received."""
@@ -436,9 +375,9 @@ def test_tick_with_invalid_data(caplog, incoming_byte_values, expected_print_str
 
 
 @pytest.mark.parametrize('incoming_byte_values, expected_print_str', [
-    ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xFF, 0x81], 'CRC_ERROR'),
-    ([0x7E, 0, 0xFF, 0x04, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x7E], 'STOP_BYTE_ERROR'),
-    ([0x7E, 0, 0xFF, 0xFF, 0x01, 0x02, 0x03, 0x04, 0xC8, 0x81], 'PAYLOAD_ERROR'),
+    ([0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6B], 'CRC_ERROR'),
+    ([0x7E, 0, 0x04, 0x01, 0x02, 0x03, 0x04, 0x6B], 'CRC_ERROR'),
+    ([0x7E, 0, 0x00, 0x01], 'CRC_ERROR'),
 ])
 def test_tick_with_invalid_data_debug_false(caplog, incoming_byte_values, expected_print_str):
     """Test that the tick method does not print when presented with invalid data and debug is False."""
@@ -448,4 +387,158 @@ def test_tick_with_invalid_data_debug_false(caplog, incoming_byte_values, expect
     assert result is False
     assert len(caplog.records) == 0
 
-    
+
+
+def test_available_accepts_zero_length_packet():
+    st = SerialTransfer('COM3')
+    make_incoming_byte_stream([0x7E, 0, 0, 0], st.connection)
+    assert st.available() == 0
+    assert st.status == Status.NEW_DATA
+    assert st.bytes_read == 0
+
+
+def test_available_accepts_255_byte_payload():
+    st = SerialTransfer('COM3')
+    payload = list(range(255))
+    frame = [0x7E, 1, 0xFF] + payload + [0xA2]
+    make_incoming_byte_stream(frame, st.connection)
+    assert st.available() == 255
+    assert st.status == Status.NEW_DATA
+    assert list(st.rx_buff) == payload
+
+
+def test_tick_dispatches_zero_length_packet():
+    callback = MagicMock()
+    st = SerialTransfer('COM3')
+    st.set_callbacks([callback])
+    make_incoming_byte_stream([0x7E, 0, 0, 0], st.connection)
+    assert st.tick() is True
+    callback.assert_called_once()
+
+
+
+def test_available_reports_stale_partial_packet():
+    st = SerialTransfer('COM3', inter_byte_timeout=0.01)
+    make_incoming_byte_stream([], st.connection)
+    st.state = State.FIND_ID_BYTE
+    st._last_byte_time = 1.0
+    with patch('pySerialTransfer.pySerialTransfer.time.monotonic', return_value=2.0):
+        assert st.available() == 0
+    assert st.status == Status.STALE_PACKET_ERROR
+
+
+
+def test_available_buffers_back_to_back_packets():
+    st = SerialTransfer('COM3')
+    first = [0x7E, 0, 4, 1, 2, 3, 4, 0x6A]
+    second = [0x7E, 1, 4, 4, 3, 2, 1, 0x9B]
+    make_incoming_byte_stream(first + second, st.connection)
+    assert st.available() == 4
+    assert st.id_byte == 0
+    assert st.available() == 4
+    assert st.id_byte == 1
+    assert list(st.rx_buff[:4]) == [4, 3, 2, 1]
+
+
+def test_send_completes_partial_writes():
+    st = SerialTransfer('COM3')
+    st.connection.write.side_effect = [2, 2]
+    assert st.send(0) is True
+    assert st.connection.write.call_count == 2
+
+
+def test_send_stops_when_serial_write_makes_no_progress():
+    st = SerialTransfer('COM3')
+    st.connection.write.side_effect = [2, 0]
+    assert st.send(0) is False
+    assert st.connection.write.call_count == 2
+
+
+
+def test_available_parses_frame_across_poll_calls():
+    st = SerialTransfer('COM3')
+    first = bytes([0x7E, 0, 4])
+    second = bytes([1, 2, 3, 4, 0x6A])
+
+    type(st.connection).in_waiting = PropertyMock(side_effect=[len(first), 0])
+    st.connection.read.side_effect = [first]
+    assert st.available() == 0
+    assert st.status == Status.CONTINUE
+
+    type(st.connection).in_waiting = PropertyMock(side_effect=[len(second), 0])
+    st.connection.read.side_effect = [second]
+    assert st.available() == 4
+    assert st.status == Status.NEW_DATA
+    assert list(st.rx_buff[:4]) == [1, 2, 3, 4]
+
+
+
+def test_rx_obj_unpacks_struct_list_values():
+    st = SerialTransfer('COM3')
+    st.rx_buff[:8] = bytes([1, 0, 0, 0, 254, 255, 255, 255])
+    st.bytes_read = 8
+    assert st.rx_obj(list, obj_byte_size=8, list_format='i') == [1, -2]
+
+
+def test_rx_obj_rejects_incomplete_list_element():
+    st = SerialTransfer('COM3')
+    st.rx_buff[:3] = bytes([1, 0, 0])
+    st.bytes_read = 3
+    assert st.rx_obj(list, list_format='i') is None
+
+
+def test_tx_obj_character_and_invalid_values():
+    st = SerialTransfer('COM3')
+    assert st.tx_obj('A', val_type_override='c') == 1
+    assert st.tx_buff[0] == ord('A')
+    before = st.tx_buff[:]
+    assert st.tx_obj('AB', val_type_override='c') is None
+    assert st.tx_buff == before
+
+
+def test_tx_obj_list_failure_rolls_back_partial_bytes():
+    st = SerialTransfer('COM3')
+    before = st.tx_buff[:]
+    assert st.tx_obj([1, object()]) is None
+    assert st.tx_buff == before
+
+
+def test_packet_id_is_published_only_after_valid_crc():
+    st = SerialTransfer('COM3')
+    st.id_byte = 7
+    crc_value = st.crc.update(st.crc.update(0, 9), 0)
+    for value in (START_BYTE, 9, 0, crc_value ^ 1):
+        st._process_byte(value, 1.0)
+    assert st.status == Status.CRC_ERROR
+    assert st.id_byte == 7
+
+
+@pytest.mark.parametrize('timeout', [0, -0.1, float('nan'), float('inf')])
+def test_constructor_rejects_invalid_inter_byte_timeout(timeout):
+    with pytest.raises(ValueError):
+        SerialTransfer('COM3', inter_byte_timeout=timeout)
+
+
+
+def test_send_rejects_negative_payload_length():
+    st = SerialTransfer('COM3')
+    assert st.send(-1) is False
+    st.connection.write.assert_not_called()
+
+
+
+def test_invalid_port_message_lists_ports_once(mock_comports):
+    with pytest.raises(InvalidSerialPort, match="Available ports: COM3"):
+        SerialTransfer('MISSING')
+    assert mock_comports.call_count == 1
+
+
+
+
+
+
+def test_send_rejects_payload_length_larger_than_buffer():
+    st = SerialTransfer('COM3')
+    st.tx_buff = bytearray([1, 2])
+    assert st.send(3) is False
+    st.connection.write.assert_not_called()

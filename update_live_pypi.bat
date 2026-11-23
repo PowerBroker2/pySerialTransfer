@@ -1,3 +1,3 @@
-python setup.py sdist
-twine upload dist/*
-PAUSE
+@echo off
+python "%~dp0tools\release.py" --repository pypi
+exit /b %errorlevel%
